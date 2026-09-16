@@ -22,6 +22,23 @@ function Write-CommitRecord {
 }
 
 foreach ($method in $manifest.methods) {
+    $repoDirectory = if ($method.repo_dir) { [string]$method.repo_dir } else { 'repo' }
+    $sourceMode = if ($method.source_mode) { [string]$method.source_mode } else { 'external' }
+    $target = Join-Path (Join-Path $experimentRoot $method.directory) $repoDirectory
+    $recordPath = Join-Path (Join-Path $experimentRoot $method.directory) 'source_commit.txt'
+
+    if ($sourceMode -eq 'bundled') {
+        if (-not (Test-Path -LiteralPath $target)) {
+            Write-Error "Bundled source is missing for $($method.name): $target"
+            exit 1
+        }
+        Write-Host "[bundled] $($method.id) $($method.name): $target"
+        if (-not (Test-Path -LiteralPath $recordPath)) {
+            "source=bundled in comparison repository`ncommit=tracked with comparison repository`nrecorded_at=$([DateTime]::Now.ToString('s'))" | Set-Content -LiteralPath $recordPath -Encoding UTF8
+        }
+        continue
+    }
+
     if ($ablationRoot -and $method.url -eq 'local implementation') {
         $localSource = Join-Path $ablationRoot 'our-gaussian-splatting'
     } elseif ($ablationRoot -and $method.id -eq '02') {
@@ -32,8 +49,6 @@ foreach ($method in $manifest.methods) {
         $localSource = $null
     }
 
-    $target = Join-Path (Join-Path $experimentRoot $method.directory) 'repo'
-    $recordPath = Join-Path (Join-Path $experimentRoot $method.directory) 'source_commit.txt'
     if (Test-Path -LiteralPath $target) {
         Write-Host "[exists] $($method.id) $($method.name): $target"
         if (Test-Path -LiteralPath (Join-Path $target '.git')) {

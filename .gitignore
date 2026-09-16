@@ -7,3 +7,7 @@ docs/
 tests/
 */repo/
 */source_commit.txt
+01_3DGS/runtime/**/__pycache__/
+01_3DGS/runtime/**/build/
+01_3DGS/runtime/**/*.egg-info/
+01_3DGS/runtime/**/dist/

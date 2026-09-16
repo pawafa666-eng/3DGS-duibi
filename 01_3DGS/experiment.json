@@ -2,10 +2,10 @@
   "id": "01",
   "name": "3D Gaussian Splatting",
   "category": "baseline",
-  "source": {"url": "https://github.com/graphdeco-inria/gaussian-splatting.git", "repo_dir": "repo"},
+  "source": {"url": "bundled custom 3DGS runtime", "repo_dir": "runtime", "mode": "bundled"},
   "mask_strategy": "metrics_only",
   "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--iterations", "{iterations}", "--test_iterations", "{iterations}", "--save_iterations", "{iterations}"]], "artifacts": ["train"]},
   "test": {"cwd": "repo", "commands": [["python", "{repo}/render.py", "-s", "{test_data}", "-m", "{train_output}", "--iteration", "{iterations}", "--skip_train"], ["python", "{root}/common/metrics.py", "--render-root", "{train_output}", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
   "artifacts": ["train", "test"],
-  "notes": "Official 3DGS baseline. Masks are retained for the common evaluator; the unmodified upstream training loss is not mask-native."
+  "notes": "Bundled verified 3DGS runtime. It preserves the custom points3D.bin format with normals and is_ground labels used by this dataset. Masks are retained for the common evaluator; training accepts masks when supplied."
 }

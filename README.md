@@ -12,7 +12,7 @@ data/地大隧道/
 
 | 编号 | 方法 | 主要对比点 | mask 策略 |
 |---|---|---|---|
-| 01 | [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) | 标准基线 | metrics_only |
+| 01 | 3DGS（随仓库附带的可训练版本） | 与本数据集自定义 `points3D.bin` 格式匹配 | metrics_only |
 | 02 | [2DGS](https://github.com/hbb1/2d-gaussian-splatting) | 2D 表面基元 | native |
 | 03 | [Gaussian Surfels](https://github.com/turandai/gaussian_surfels) | 表面重建 | native |
 | 04 | [SuGaR](https://github.com/Anttwo/SuGaR) | 表面对齐与网格 | metrics_only |
@@ -23,7 +23,7 @@ data/地大隧道/
 | 09 | [Reduced-3DGS](https://github.com/graphdeco-inria/reduced-3dgs) | 轻量化表示 | metrics_only |
 | 10 | Concrete-GS | 本文方法 | native |
 
-每个方法都有独立目录 `NN_算法/`，包括 `experiment.json`、`run.py`、说明文档和 `repo/` 源码目录。`algorithms.json` 是总清单。
+每个方法都有独立目录 `NN_算法/`，包括 `experiment.json`、`run.py`、说明文档和源码目录。01 的源码目录是仓库内的 `runtime/`，其余外部方法默认使用 `repo/`。`algorithms.json` 是总清单。
 
 ## 第一次准备源码
 
@@ -31,9 +31,11 @@ data/地大隧道/
 .\setup_repositories.ps1
 ```
 
-脚本会复用已有 `01 消融实验` 中的 mask-aware 2DGS、Gaussian Surfels 和 Concrete-GS 源码；其它方法从官方仓库浅克隆并递归获取子模块。源码目录已在 `.gitignore` 中排除，数据目录不会被复制、改名或修改。
+脚本会直接使用仓库内 `01_3DGS/runtime` 的已验证源码；其它方法复用已有 `01 消融实验` 中的源码，或从官方仓库浅克隆并递归获取子模块。数据目录不会被复制、改名或修改。
 
-本 GitHub 仓库只保存运行框架，不保存 `data/`、`output/` 或各方法的 `repo/` 源码。另一台电脑克隆后，需要先运行 `setup_repositories.ps1` 获取外部方法源码；`10_Concrete_GS` 是本地实现，如果目标电脑没有同级 `01 消融实验/our-gaussian-splatting`，还需要单独同步该源码。
+本 GitHub 仓库保存运行框架和 01 方法的必要源码，但不保存 `data/`、`output/`、各方法的 `repo/` 外部源码、缓存和预处理样例。另一台电脑克隆后，先运行 `setup_repositories.ps1` 获取 02--10 所需外部源码；01 不再依赖本机的 `repo` 目录。`10_Concrete_GS` 是本地实现，如果目标电脑没有同级 `01 消融实验/our-gaussian-splatting`，还需要单独同步该源码。
+
+01 的运行源码位于 `01_3DGS/runtime`，包含与当前数据匹配的自定义 `points3D.bin` 解析器：每个点记录包含坐标、颜色、法向量、误差和轨迹长度，另读取同目录的 `is_ground.txt`。因此不要把 01 改回官方 `repo`，否则会再次出现 `OverflowError`。
 
 ## 运行全部 10 个实验
 
