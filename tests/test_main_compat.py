@@ -44,3 +44,17 @@ def test_test_commands_render_the_explicit_test_split_as_train_cameras() -> None
     concrete_render = definitions["10"].test.commands[0]
     assert "--render_train_as_test" in concrete_render
     assert "--skip_train" not in concrete_render
+
+
+def test_concrete_gs_uses_the_paper_training_learning_rates() -> None:
+    definitions = {definition.id: definition for definition in discover_experiments(ROOT)}
+    command = definitions["10"].train.commands[0]
+
+    expected = {
+        "--position_lr_init": "0.0000016",
+        "--position_lr_final": "0.00000016",
+        "--rotation_lr": "0.0000001",
+        "--scaling_lr": "0.001",
+    }
+    for flag, value in expected.items():
+        assert command[command.index(flag) + 1] == value
