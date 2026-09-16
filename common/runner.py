@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -136,27 +137,119 @@ def _script_missing(command: list[str]) -> str | None:
     return None
 
 
+def _write_console(stream: Any, data: bytes) -> None:
+    """Write child output to a console or pytest-style text capture safely."""
+    if not data:
+        return
+    buffer = getattr(stream, "buffer", None)
+    if buffer is not None:
+        try:
+            buffer.write(data)
+            buffer.flush()
+            return
+        except (AttributeError, OSError, TypeError):
+            pass
+    stream.write(data.decode("utf-8", errors="replace"))
+    stream.flush()
+
+
 def _run_command(
     command: list[str],
     cwd: Path,
     stdout_path: Path,
     stderr_path: Path,
     env: dict[str, str] | None = None,
+    label: str | None = None,
+    heartbeat_sec: float = 30.0,
 ) -> CommandObservation:
     merged_env = os.environ.copy()
     if env:
         merged_env.update(env)
-    with stdout_path.open("a", encoding="utf-8") as stdout_handle, stderr_path.open("a", encoding="utf-8") as stderr_handle:
-        stdout_handle.write(f"\n$ {command_line(command)}\n")
+    merged_env.setdefault("PYTHONUNBUFFERED", "1")
+    stdout_path.parent.mkdir(parents=True, exist_ok=True)
+    stderr_path.parent.mkdir(parents=True, exist_ok=True)
+    display_label = label or "command"
+    _write_console(sys.stdout, f"\n[{display_label}] started; live output follows\n".encode("utf-8"))
+    with stdout_path.open("ab") as stdout_handle, stderr_path.open("ab") as stderr_handle:
+        stdout_handle.write(f"\n$ {command_line(command)}\n".encode("utf-8", errors="replace"))
         stdout_handle.flush()
         process = subprocess.Popen(
             command,
             cwd=str(cwd),
-            stdout=stdout_handle,
-            stderr=stderr_handle,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0,
             env=merged_env,
         )
-        return observe_process(process)
+        console_lock = threading.Lock()
+        output_lock = threading.Lock()
+        stop_heartbeat = threading.Event()
+        last_output = time.monotonic()
+
+        def pump(pipe: Any, log_handle: Any, console: Any) -> None:
+            nonlocal last_output
+            try:
+                while True:
+                    chunk = pipe.read(4096)
+                    if not chunk:
+                        return
+                    log_handle.write(chunk)
+                    log_handle.flush()
+                    with output_lock:
+                        last_output = time.monotonic()
+                    with console_lock:
+                        _write_console(console, chunk)
+            finally:
+                pipe.close()
+
+        pumps = [
+            threading.Thread(
+                target=pump,
+                args=(process.stdout, stdout_handle, sys.stdout),
+                name=f"{display_label}-stdout",
+                daemon=True,
+            ),
+            threading.Thread(
+                target=pump,
+                args=(process.stderr, stderr_handle, sys.stderr),
+                name=f"{display_label}-stderr",
+                daemon=True,
+            ),
+        ]
+        for pump_thread in pumps:
+            pump_thread.start()
+
+        def heartbeat() -> None:
+            if heartbeat_sec <= 0:
+                return
+            last_notice = 0.0
+            while not stop_heartbeat.wait(min(1.0, heartbeat_sec)):
+                with output_lock:
+                    silent_for = time.monotonic() - last_output
+                now = time.monotonic()
+                if silent_for >= heartbeat_sec and now - last_notice >= heartbeat_sec:
+                    elapsed = time.strftime("%H:%M:%S", time.gmtime(silent_for))
+                    with console_lock:
+                        _write_console(
+                            sys.stdout,
+                            f"\n[{display_label}] still running; no output for {elapsed}\n".encode("utf-8"),
+                        )
+                    last_notice = now
+
+        heartbeat_thread = threading.Thread(
+            target=heartbeat,
+            name=f"{display_label}-heartbeat",
+            daemon=True,
+        )
+        heartbeat_thread.start()
+        try:
+            observation = observe_process(process)
+        finally:
+            stop_heartbeat.set()
+            heartbeat_thread.join(timeout=2.0)
+            for pump_thread in pumps:
+                pump_thread.join(timeout=2.0)
+        return observation
 
 
 def _is_render_command(command: list[str]) -> bool:
@@ -308,7 +401,13 @@ def run_experiment(
         stdout_path = output_dir / f"{stage_name}_stdout.log"
         stderr_path = output_dir / f"{stage_name}_stderr.log"
         for command in stage_commands:
-            observation = _run_command(command, cwd, stdout_path, stderr_path)
+            observation = _run_command(
+                command,
+                cwd,
+                stdout_path,
+                stderr_path,
+                label=f"{experiment.id} {experiment.name} / {stage_name}",
+            )
             if observation.peak_gpu_memory_mb is not None:
                 current_peak = telemetry["peak_gpu_memory_mb"]
                 telemetry["peak_gpu_memory_mb"] = (

@@ -47,6 +47,8 @@ data/地大隧道/
 python .\main.py --mode both
 ```
 
+运行时总控会实时转发每个方法的训练、测试子进程输出，因此可以直接看到算法自身的 `iteration` 或 `tqdm` 进度条。每个阶段会显示方法编号和 `train/test` 标签；如果连续约 30 秒没有输出，会提示该阶段仍在运行。完整原始输出仍分别保存在对应目录的 `train_stdout.log`、`train_stderr.log`、`test_stdout.log` 和 `test_stderr.log` 中。没有原生迭代进度输出的方法只能显示运行心跳，不会伪造 iteration。
+
 也可以双击或命令行调用：
 
 ```powershell
