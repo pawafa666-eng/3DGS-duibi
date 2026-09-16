@@ -33,6 +33,8 @@ data/地大隧道/
 
 脚本会复用已有 `01 消融实验` 中的 mask-aware 2DGS、Gaussian Surfels 和 Concrete-GS 源码；其它方法从官方仓库浅克隆并递归获取子模块。源码目录已在 `.gitignore` 中排除，数据目录不会被复制、改名或修改。
 
+本 GitHub 仓库只保存运行框架，不保存 `data/`、`output/` 或各方法的 `repo/` 源码。另一台电脑克隆后，需要先运行 `setup_repositories.ps1` 获取外部方法源码；`10_Concrete_GS` 是本地实现，如果目标电脑没有同级 `01 消融实验/our-gaussian-splatting`，还需要单独同步该源码。
+
 ## 运行全部 10 个实验
 
 默认训练再测试，每个实验 30000 次迭代：
