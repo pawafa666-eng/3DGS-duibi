@@ -8,6 +8,7 @@ from typing import Iterable
 
 from common.config import discover_experiments
 from common.dataset import dataset_layout, validate_dataset_layout
+from common.dataset_compat import DatasetCompatibilityError, dataset_compatibility_mode
 from common.runner import build_context, next_run_dir, resolve_resume_dir, run_experiment, should_skip_experiment
 from common.summary import write_summary
 
@@ -70,7 +71,13 @@ def write_run_config(
         "iterations": args.iterations,
         "dataset_root": str(dataset_root),
         "dataset_report": {"counts": report.counts, "warnings": report.warnings},
-        "experiments": [definition.to_dict() for definition in definitions],
+        "experiments": [
+            {
+                **definition.to_dict(),
+                "dataset_compat": dataset_compatibility_mode(ROOT, definition.directory),
+            }
+            for definition in definitions
+        ],
     }
     filename = "resume_config.json" if preserve_existing and (run_dir / "run_config.json").is_file() else "run_config.json"
     target = run_dir / filename
@@ -113,7 +120,11 @@ def main(argv: list[str] | None = None) -> int:
     except (FileNotFoundError, ValueError) as error:
         print(str(error), file=sys.stderr)
         return 2
-    write_run_config(run_dir, args, dataset_root, report, selected, preserve_existing=bool(resume_value))
+    try:
+        write_run_config(run_dir, args, dataset_root, report, selected, preserve_existing=bool(resume_value))
+    except DatasetCompatibilityError as error:
+        print(f"Unable to write run configuration: {error}", file=sys.stderr)
+        return 2
 
     failures: list[tuple[str, str]] = []
     for definition in selected:
@@ -122,7 +133,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[skip:{definition.id}] {definition.name} (completed artifacts exist)")
             continue
         print(f"[{definition.id}] {definition.name}")
-        context = build_context(ROOT, definition, run_dir, dataset_layout(dataset_root), args.iterations)
+        try:
+            context = build_context(ROOT, definition, run_dir, dataset_layout(dataset_root), args.iterations)
+        except DatasetCompatibilityError as error:
+            print(f"[{definition.id}] blocked: {error}", file=sys.stderr)
+            failures.append((definition.id, "blocked"))
+            if not args.continue_on_error:
+                print("Stopped at first failure. Resume with this run number to retry missing experiments.", file=sys.stderr)
+                break
+            continue
         result = run_experiment(definition, context, args.mode, dry_run=args.dry_run)
         status = result.get("status", "unknown")
         print(f"[{definition.id}] {status}")

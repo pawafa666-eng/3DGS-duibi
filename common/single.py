@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .config import load_experiment_definition
 from .dataset import dataset_layout, validate_dataset_layout
+from .dataset_compat import DatasetCompatibilityError, prepare_context_dataset
 from .runner import build_context, next_run_dir, resolve_resume_dir, run_experiment
 
 
@@ -31,6 +32,11 @@ def run_single(experiment_dir: Path, argv: list[str] | None = None) -> int:
     run_dir = resolve_resume_dir(output_root, args.run_dir) if args.run_dir else next_run_dir(output_root)
     run_dir.mkdir(parents=True, exist_ok=True)
     context = build_context(root, definition, run_dir, dataset_layout(data_root), args.iterations)
+    try:
+        context = prepare_context_dataset(context, dry_run=args.dry_run)
+    except DatasetCompatibilityError as error:
+        print(f"[{definition.id}] blocked: {error}")
+        return 2
     result = run_experiment(definition, context, args.stage, args.dry_run)
     print(f"[{definition.id}] {result.get('status', 'unknown')}: {run_dir}")
     return 0 if result.get("status") in {"completed", "skipped", "planned"} else 1

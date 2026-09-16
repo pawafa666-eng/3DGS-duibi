@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import DatasetLayout, ExperimentDefinition, StageDefinition
+from .dataset_compat import (
+    DatasetCompatibilityError,
+    dataset_compatibility_mode,
+    prepare_context_dataset,
+)
 from .telemetry import (
     CommandObservation,
     average_iteration_time,
@@ -172,6 +177,7 @@ def build_context(
     repo = experiment_dir / experiment.source_repo_dir
     return {
         "root": root,
+        "experiment": experiment.directory,
         "data_root": layout.root,
         "train_data": layout.train,
         "test_data": layout.test,
@@ -183,6 +189,8 @@ def build_context(
         "experiment_dir": experiment_dir,
         "repo": repo,
         "iterations": iterations,
+        "dataset_compat": dataset_compatibility_mode(root, experiment.directory),
+        "dataset_compat_cache_root": run_dir.parent / ".dataset_compat",
     }
 
 
@@ -198,6 +206,22 @@ def run_experiment(
 ) -> dict[str, Any]:
     output_dir = Path(context["output"])
     output_dir.mkdir(parents=True, exist_ok=True)
+    if (
+        not context.get("_dataset_context_prepared")
+        or context.get("_dataset_context_dry_run") != dry_run
+    ):
+        try:
+            context = prepare_context_dataset(context, dry_run=dry_run)
+        except DatasetCompatibilityError as error:
+            return _status(
+                output_dir,
+                status="blocked",
+                error=str(error),
+                finished_at=now_iso(),
+                exit_code=2,
+                dataset_compat=context.get("dataset_compat", "raw"),
+                dataset_root=str(context.get("data_root", "")),
+            )
     required_artifacts = ["train"] if mode == "train" else ["test"] if mode == "test" else ["train", "test"]
     all_commands: list[list[str]] = []
     stages: list[tuple[str, StageDefinition]] = []
@@ -218,6 +242,12 @@ def run_experiment(
         "name": experiment.name,
         "mode": mode,
         "mask_strategy": experiment.mask_strategy,
+        "dataset_compat": context.get("dataset_compat", "raw"),
+        "dataset_root": str(context["data_root"]),
+        "dataset_compat_cache_dir": str(context["dataset_compat_cache_dir"])
+        if context.get("dataset_compat_cache_dir")
+        else None,
+        "dataset_compat_cache_hit": context.get("dataset_compat_cache_hit"),
         "source_url": experiment.source_url,
         "artifacts": required_artifacts,
         "started_at": now_iso(),
