@@ -47,7 +47,9 @@ def _render_files(render_root: Path) -> list[Path]:
         return []
     render_files = []
     for path in render_root.rglob("*.png"):
-        if not path.is_file() or path.parent.name.lower() != "renders":
+        parent_name = path.parent.name.lower()
+        is_render_directory = parent_name == "renders" or parent_name.startswith("test_preds_")
+        if not path.is_file() or not is_render_directory:
             continue
         relative_parts = path.relative_to(render_root).parts[:-1]
         if any(part.lower() == "train" for part in relative_parts):

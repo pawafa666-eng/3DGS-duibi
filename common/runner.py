@@ -63,7 +63,27 @@ def should_skip_experiment(experiment_output: Path) -> bool:
     artifacts = status.get("artifacts", [])
     if not isinstance(artifacts, list):
         return False
-    return all((Path(experiment_output) / str(artifact)).exists() for artifact in artifacts)
+    return all(_artifact_ready(Path(experiment_output), str(artifact)) for artifact in artifacts)
+
+
+def _artifact_ready(output_dir: Path, artifact: str) -> bool:
+    """Require real stage output instead of accepting controller-created directories."""
+    path = Path(output_dir) / artifact
+    if path.is_file():
+        return path.stat().st_size > 0
+    if not path.is_dir() or not any(item.is_file() for item in path.rglob("*")):
+        return False
+    if artifact == "train":
+        return collect_model_artifacts(path).get("model_file") is not None
+    if artifact == "test":
+        metrics_path = path / "test_metrics.json"
+        metrics = _read_json(metrics_path)
+        if metrics is None:
+            return True
+        if metrics.get("status") != "completed":
+            return False
+        return int(metrics.get("num_images", 0)) > 0
+    return True
 
 
 def expand_command(command: Iterable[str], values: dict[str, Any]) -> list[str]:
@@ -283,7 +303,7 @@ def run_experiment(
             missing = _script_missing(command)
             if missing:
                 return _status(output_dir, status="blocked", error=f"Missing command file: {missing}", failed_stage=stage_name, finished_at=now_iso(), exit_code=127)
-        stage_result = _status(output_dir, status="running", current_stage=stage_name)
+            _status(output_dir, status="running", current_stage=stage_name)
         atomic_write_json(output_dir / "stage_status.json", {"stage": stage_name, "status": "running", "updated_at": now_iso()})
         stdout_path = output_dir / f"{stage_name}_stdout.log"
         stderr_path = output_dir / f"{stage_name}_stderr.log"
@@ -327,8 +347,32 @@ def run_experiment(
             telemetry["avg_iteration_time_sec"] = average_iteration_time(
                 telemetry["training_time_sec"], iteration_target
             )
+        stage_artifacts = stage.artifacts or ([stage_name] if stage_name in required_artifacts else [])
+        missing_artifacts = [
+            artifact for artifact in stage_artifacts if not _artifact_ready(output_dir, artifact)
+        ]
+        if missing_artifacts:
+            _write_metrics(output_dir, telemetry)
+            atomic_write_json(
+                output_dir / "stage_status.json",
+                {
+                    "stage": stage_name,
+                    "status": "failed",
+                    "updated_at": now_iso(),
+                    "missing_artifacts": missing_artifacts,
+                },
+            )
+            return _status(
+                output_dir,
+                status="failed",
+                failed_stage=stage_name,
+                finished_at=now_iso(),
+                exit_code=1,
+                error=f"Missing expected artifact(s): {', '.join(missing_artifacts)}",
+                **_telemetry_payload(telemetry, output_dir),
+            )
         atomic_write_json(output_dir / "stage_status.json", {"stage": stage_name, "status": "completed", "updated_at": now_iso()})
-    for artifact in required_artifacts:
-        (output_dir / artifact).mkdir(parents=True, exist_ok=True)
     metrics = _write_metrics(output_dir, telemetry)
-    return _status(output_dir, status="completed", finished_at=now_iso(), exit_code=0, **metrics)
+    completion = dict(metrics)
+    completion.update(status="completed", finished_at=now_iso(), exit_code=0)
+    return _status(output_dir, **completion)

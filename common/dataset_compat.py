@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import struct
 import subprocess
 import tempfile
@@ -172,13 +173,37 @@ def _points_to(path: Path, target: Path) -> bool:
             return False
 
 
+def _is_linked_directory(path: Path) -> bool:
+    """Detect symlinks/junctions without following a directory link."""
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    if callable(is_junction):
+        try:
+            if is_junction():
+                return True
+        except OSError:
+            return False
+    if os.name == "nt":
+        try:
+            attributes = getattr(path.stat(), "st_file_attributes", 0)
+        except OSError:
+            return False
+        return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
+    return False
+
+
 def _remove_cache_dir(path: Path) -> None:
     """Remove one cache entry without traversing linked source directories."""
     if not path.exists():
         return
     for child in path.iterdir():
-        is_junction = getattr(child, "is_junction", lambda: False)()
-        if child.is_dir() and not child.is_symlink() and not is_junction:
+        if child.is_symlink():
+            child.unlink()
+        elif _is_linked_directory(child):
+            # Path.rmdir removes a Windows junction itself, not its target.
+            child.rmdir()
+        elif child.is_dir():
             shutil.rmtree(child)
         else:
             child.unlink()

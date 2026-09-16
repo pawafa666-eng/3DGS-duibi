@@ -21,9 +21,9 @@ data/地大隧道/
 | 07 | [GaussianPro](https://github.com/kcheng1021/GaussianPro) | 渐进传播 | metrics_only |
 | 08 | [Octree-GS](https://github.com/city-super/Octree-GS) | LOD 层次化表示 | metrics_only |
 | 09 | [Reduced-3DGS](https://github.com/graphdeco-inria/reduced-3dgs) | 轻量化表示 | metrics_only |
-| 10 | Concrete-GS | 本文方法 | native |
+| 10 | Concrete-GS（随仓库附带的可训练版本） | 本文方法 | native |
 
-每个方法都有独立目录 `NN_算法/`，包括 `experiment.json`、`run.py`、说明文档和源码目录。01 的源码目录是仓库内的 `runtime/`，其余外部方法默认使用 `repo/`。`algorithms.json` 是总清单。
+每个方法都有独立目录 `NN_算法/`，包括 `experiment.json`、`run.py`、说明文档和源码目录。01 和 10 的源码目录是仓库内的 `runtime/`，其余外部方法默认使用 `repo/`。`algorithms.json` 是总清单。
 
 ## 第一次准备源码
 
@@ -33,7 +33,9 @@ data/地大隧道/
 
 脚本会直接使用仓库内 `01_3DGS/runtime` 的已验证源码；其它方法复用已有 `01 消融实验` 中的源码，或从官方仓库浅克隆并递归获取子模块。数据目录不会被复制、改名或修改。
 
-本 GitHub 仓库保存运行框架和 01 方法的必要源码，但不保存 `data/`、`output/`、各方法的 `repo/` 外部源码、缓存和预处理样例。另一台电脑克隆后，先运行 `setup_repositories.ps1` 获取 02--10 所需外部源码；01 不再依赖本机的 `repo` 目录。`10_Concrete_GS` 是本地实现，如果目标电脑没有同级 `01 消融实验/our-gaussian-splatting`，还需要单独同步该源码。
+本 GitHub 仓库保存运行框架、01 和 10 方法的必要源码，但不保存 `data/`、`output/`、02--09 的外部源码、缓存和预处理样例。另一台电脑克隆后，先运行 `setup_repositories.ps1` 获取 02--09 所需外部源码；01 和 10 不再依赖本机的 `repo` 目录，也不再依赖同级 `01 消融实验`。
+
+02--09 使用的当前数据是自定义 `points3D.bin`，总控运行时会在 `output/.dataset_compat/` 建立隔离的标准 COLMAP 兼容视图：复制 `cameras.bin`、`images.bin`，把自定义点记录转换为标准格式，并通过 junction 复用 images/masks。源数据不会被改写，兼容缓存按数据文件指纹复用。01 和 10 继续直接使用原始自定义格式。
 
 01 的运行源码位于 `01_3DGS/runtime`，包含与当前数据匹配的自定义 `points3D.bin` 解析器：每个点记录包含坐标、颜色、法向量、误差和轨迹长度，另读取同目录的 `is_ground.txt`。因此不要把 01 改回官方 `repo`，否则会再次出现 `OverflowError`。
 
@@ -129,4 +131,4 @@ output/03/
 python .\02_2DGS\run.py --stage both --data data\地大隧道
 ```
 
-单独入口会创建新的运行目录；需要接着已有运行时传入 `--run-dir output\03`。
+单独入口会创建新的运行目录；需要接着已有运行时传入 `--run-dir output\03`。02--09 的独立入口也会使用同一套标准 COLMAP 兼容缓存；`--dry-run` 只生成命令计划，不会转换 500 万点文件。

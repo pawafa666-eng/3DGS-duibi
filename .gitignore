@@ -11,3 +11,17 @@ tests/
 01_3DGS/runtime/**/build/
 01_3DGS/runtime/**/*.egg-info/
 01_3DGS/runtime/**/dist/
+10_Concrete_GS/runtime/**/__pycache__/
+10_Concrete_GS/runtime/**/build/
+10_Concrete_GS/runtime/**/*.egg-info/
+10_Concrete_GS/runtime/**/dist/
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/cmake/
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/doc/
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/test/
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/util/
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/.appveyor.yml
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/.travis.yml
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/CMakeLists.txt
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/copying.txt
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/manual.md
+10_Concrete_GS/runtime/submodules/diff-gaussian-rasterization/third_party/glm/readme.md

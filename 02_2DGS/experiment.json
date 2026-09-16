@@ -6,7 +6,7 @@
   "mask_strategy": "native",
   "dataset_compat": "standard_colmap",
   "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--masks", "{train_masks}", "--iterations", "{iterations}", "--test_iterations", "{iterations}", "--save_iterations", "{iterations}"]], "artifacts": ["train"]},
-  "test": {"cwd": "repo", "commands": [["python", "{repo}/render.py", "-s", "{test_data}", "-m", "{train_output}", "--masks", "{test_masks}", "--iteration", "{iterations}", "--skip_train", "--skip_mesh"], ["python", "{root}/common/metrics.py", "--render-root", "{train_output}", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
+  "test": {"cwd": "repo", "commands": [["python", "{repo}/render.py", "-s", "{test_data}", "-m", "{train_output}", "--masks", "{test_masks}", "--iteration", "{iterations}", "--skip_test", "--skip_mesh"], ["python", "{root}/common/metrics.py", "--render-root", "{train_output}/train", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
   "artifacts": ["train", "test"],
   "notes": "Surface-element baseline. The local adapter keeps the mask argument explicit; verify the checked-out source commit before formal results."
 }

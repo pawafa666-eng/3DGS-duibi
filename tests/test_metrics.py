@@ -73,3 +73,17 @@ def test_nested_train_renders_are_not_treated_as_test_renders(tmp_path: Path) ->
     assert result["status"] == "completed"
     assert result["num_images"] == 1
     assert written["per_image"][0]["image"] == "imageb_001"
+
+
+def test_mip_splatting_test_preds_directory_is_supported(tmp_path: Path) -> None:
+    _write_rgb(tmp_path / "data" / "images" / "imageb_001.jpg", 40)
+    _write_mask(tmp_path / "masks" / "imageb_001.mask.png")
+
+    render_root = tmp_path / "algorithm" / "ours_30000" / "test_preds_1"
+    _write_rgb(render_root / "00000.png", 41)
+
+    result = _evaluate_fixture(tmp_path, tmp_path / "algorithm")
+
+    assert result["status"] == "completed"
+    assert result["num_images"] == 1
+    assert result["per_image"][0]["image"] == "imageb_001"

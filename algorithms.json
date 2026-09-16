@@ -11,6 +11,6 @@
     {"id": "07", "directory": "07_GaussianPro", "name": "GaussianPro", "url": "https://github.com/kcheng1021/GaussianPro.git", "mask_strategy": "metrics_only", "dataset_compat": "standard_colmap"},
     {"id": "08", "directory": "08_Octree_GS", "name": "Octree-GS", "url": "https://github.com/city-super/Octree-GS.git", "mask_strategy": "metrics_only", "dataset_compat": "standard_colmap"},
     {"id": "09", "directory": "09_Reduced_3DGS", "name": "Reduced-3DGS", "url": "https://github.com/graphdeco-inria/reduced-3dgs.git", "mask_strategy": "metrics_only", "dataset_compat": "standard_colmap"},
-    {"id": "10", "directory": "10_Concrete_GS", "name": "Concrete-GS", "url": "local implementation", "mask_strategy": "native", "dataset_compat": "raw"}
+    {"id": "10", "directory": "10_Concrete_GS", "name": "Concrete-GS", "url": "bundled custom Concrete-GS runtime", "repo_dir": "runtime", "source_mode": "bundled", "mask_strategy": "native", "dataset_compat": "raw"}
   ]
 }
