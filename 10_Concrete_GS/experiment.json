@@ -1,0 +1,11 @@
+{
+  "id": "10",
+  "name": "Concrete-GS",
+  "category": "ours",
+  "source": {"url": "local implementation", "repo_dir": "repo"},
+  "mask_strategy": "native",
+  "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--masks", "{train_masks}", "--iterations", "{iterations}", "--test_iterations", "{iterations}", "--save_iterations", "{iterations}", "--experiment_mode", "F"]], "artifacts": ["train"]},
+  "test": {"cwd": "repo", "commands": [["python", "{repo}/render.py", "-s", "{test_data}", "-m", "{train_output}", "--masks", "{test_masks}", "--iteration", "{iterations}", "--skip_train"], ["python", "{root}/common/metrics.py", "--render-root", "{train_output}", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
+  "artifacts": ["train", "test"],
+  "notes": "Local Concrete-GS implementation copied from the existing 01 ablation source and run in complete-method mode F."
+}

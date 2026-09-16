@@ -1,0 +1,11 @@
+{
+  "id": "05",
+  "name": "Mip-Splatting",
+  "category": "anti_aliasing",
+  "source": {"url": "https://github.com/autonomousvision/mip-splatting.git", "repo_dir": "repo"},
+  "mask_strategy": "metrics_only",
+  "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--iterations", "{iterations}", "--test_iterations", "{iterations}", "--save_iterations", "{iterations}"]], "artifacts": ["train"]},
+  "test": {"cwd": "repo", "commands": [["python", "{repo}/render.py", "-s", "{test_data}", "-m", "{train_output}", "--iteration", "{iterations}", "--skip_train"], ["python", "{root}/common/metrics.py", "--render-root", "{train_output}", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
+  "artifacts": ["train", "test"],
+  "notes": "Official alias-free 3DGS implementation. Masked evaluation is recorded separately from upstream training."
+}

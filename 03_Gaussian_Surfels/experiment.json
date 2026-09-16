@@ -1,0 +1,11 @@
+{
+  "id": "03",
+  "name": "Gaussian Surfels",
+  "category": "surface_reconstruction",
+  "source": {"url": "https://github.com/turandai/gaussian_surfels.git", "repo_dir": "repo"},
+  "mask_strategy": "native",
+  "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--images", "images", "--masks", "{train_masks}", "--iterations", "{iterations}"]], "artifacts": ["train"]},
+  "test": {"cwd": "repo", "commands": [["python", "{repo}/render.py", "-s", "{test_data}", "-m", "{train_output}", "--masks", "{test_masks}", "--iteration", "{iterations}", "--skip_train"], ["python", "{root}/common/metrics.py", "--render-root", "{train_output}", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
+  "artifacts": ["train", "test"],
+  "notes": "Official Gaussian Surfels implementation with mask-aware local source support. PyTorch3D and CUDA extensions are required."
+}

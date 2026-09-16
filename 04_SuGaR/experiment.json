@@ -1,0 +1,11 @@
+{
+  "id": "04",
+  "name": "SuGaR",
+  "category": "surface_aligned_mesh",
+  "source": {"url": "https://github.com/Anttwo/SuGaR.git", "repo_dir": "repo"},
+  "mask_strategy": "metrics_only",
+  "train": {"cwd": "repo", "commands": [["python", "{repo}/train_full_pipeline.py", "-s", "{train_data}", "-r", "dn_consistency", "--low_poly", "True", "--refinement_time", "short", "--export_ply", "True", "--export_obj", "False"]], "artifacts": ["train"]},
+  "test": {"cwd": "repo", "commands": [["python", "{root}/common/metrics.py", "--render-root", "{train_output}", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
+  "artifacts": ["train", "test"],
+  "notes": "The upstream pipeline is multi-stage and documents Windows incompatibility; this entry records the official command and will stop as blocked/failed until adapted for the local environment."
+}
