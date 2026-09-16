@@ -42,23 +42,67 @@ def _ssim(prediction, target):
 
 
 def _render_files(render_root: Path) -> list[Path]:
-    return sorted(path for path in render_root.rglob("renders/*.png") if path.is_file())
+    render_root = Path(render_root)
+    if render_root.name.lower() == "train":
+        return []
+    render_files = []
+    for path in render_root.rglob("*.png"):
+        if not path.is_file() or path.parent.name.lower() != "renders":
+            continue
+        relative_parts = path.relative_to(render_root).parts[:-1]
+        if any(part.lower() == "train" for part in relative_parts):
+            continue
+        render_files.append(path)
+    return sorted(render_files, key=lambda path: path.relative_to(render_root).as_posix())
+
+
+def _image_files(data_root: Path) -> list[Path]:
+    images_root = Path(data_root) / "images"
+    return sorted(
+        (path for path in images_root.iterdir() if path.is_file()),
+        key=lambda path: path.relative_to(images_root).as_posix(),
+    )
+
+
+def _render_targets(render_files: list[Path], image_files: list[Path]) -> dict[Path, Path]:
+    exact_by_stem: dict[str, Path] = {}
+    for image_path in image_files:
+        exact_by_stem.setdefault(image_path.stem, image_path)
+
+    targets: dict[Path, Path] = {}
+    used_images: set[Path] = set()
+    numeric_renders: list[Path] = []
+    for render_path in render_files:
+        target_path = exact_by_stem.get(render_path.stem)
+        if target_path is not None:
+            targets[render_path] = target_path
+            used_images.add(target_path)
+        elif render_path.stem.isdigit():
+            numeric_renders.append(render_path)
+
+    remaining_images = [path for path in image_files if path not in used_images]
+    for render_path, target_path in zip(numeric_renders, remaining_images):
+        targets[render_path] = target_path
+    return targets
 
 
 def evaluate(render_root: Path, data_root: Path, masks_root: Path, output_path: Path) -> dict[str, Any]:
     import numpy as np
 
     render_root = Path(render_root)
-    data_images = {path.stem: path for path in (Path(data_root) / "images").iterdir() if path.is_file()}
+    data_images = _image_files(data_root)
     render_files = _render_files(render_root)
+    render_targets = _render_targets(render_files, data_images)
     psnr_values: list[float] = []
     ssim_values: list[float] = []
     per_image: list[dict[str, Any]] = []
     for render_path in render_files:
-        stem = render_path.stem
-        target_path = data_images.get(stem)
+        target_path = render_targets.get(render_path)
+        if target_path is None:
+            continue
+        stem = target_path.stem
         mask_path = Path(masks_root) / f"{stem}.mask.png"
-        if target_path is None or not mask_path.is_file():
+        if not mask_path.is_file():
             continue
         prediction = _load_image(render_path)
         target = _load_image(target_path)
@@ -115,4 +159,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
