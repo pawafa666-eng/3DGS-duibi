@@ -337,6 +337,10 @@ class GaussianModel:
 
         self.denom = self.denom[valid_points_mask]
         self.max_radii2D = self.max_radii2D[valid_points_mask]
+        if self._normals.ndim == 2 and self._normals.shape[0] == valid_points_mask.shape[0]:
+            self._normals = self._normals[valid_points_mask]
+        else:
+            self._normals = torch.zeros((self._xyz.shape[0], 3), device=self._xyz.device, dtype=self._xyz.dtype)
 
     def cat_tensors_to_optimizer(self, tensors_dict):
         optimizable_tensors = {}
@@ -360,7 +364,9 @@ class GaussianModel:
 
         return optimizable_tensors
 
-    def densification_postfix(self, new_xyz, new_features_dc, new_features_rest, new_opacities, new_scaling, new_rotation):
+    def densification_postfix(self, new_xyz, new_features_dc, new_features_rest, new_opacities, new_scaling, new_rotation, new_normals=None):
+        old_point_count = self._xyz.shape[0]
+        old_normals = self._normals
         d = {"xyz": new_xyz,
         "f_dc": new_features_dc,
         "f_rest": new_features_rest,
@@ -380,7 +386,16 @@ class GaussianModel:
         self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
         self.is_ground = 0
-        # self._normals = torch.zeros((fused_point_cloud.shape[0], 4), device="cuda")
+        if old_normals.ndim == 2 and old_normals.shape[0] == old_point_count:
+            if new_normals is None:
+                new_normals = torch.zeros(
+                    (new_xyz.shape[0], old_normals.shape[1]),
+                    device=old_normals.device,
+                    dtype=old_normals.dtype,
+                )
+            self._normals = torch.cat((old_normals, new_normals), dim=0)
+        else:
+            self._normals = torch.zeros((self._xyz.shape[0], 3), device=self._xyz.device, dtype=self._xyz.dtype)
 
     def densify_and_split(self, grads, grad_threshold, scene_extent, N=2):
         n_init_points = self.get_xyz.shape[0]
@@ -401,8 +416,9 @@ class GaussianModel:
         new_features_dc = self._features_dc[selected_pts_mask].repeat(N,1,1)
         new_features_rest = self._features_rest[selected_pts_mask].repeat(N,1,1)
         new_opacity = self._opacity[selected_pts_mask].repeat(N,1)
+        new_normals = self._normals[selected_pts_mask].repeat(N, 1)
 
-        self.densification_postfix(new_xyz, new_features_dc, new_features_rest, new_opacity, new_scaling, new_rotation)
+        self.densification_postfix(new_xyz, new_features_dc, new_features_rest, new_opacity, new_scaling, new_rotation, new_normals)
 
         prune_filter = torch.cat((selected_pts_mask, torch.zeros(N * selected_pts_mask.sum(), device="cuda", dtype=bool)))
         self.prune_points(prune_filter)
@@ -419,8 +435,9 @@ class GaussianModel:
         new_opacities = self._opacity[selected_pts_mask]
         new_scaling = self._scaling[selected_pts_mask]
         new_rotation = self._rotation[selected_pts_mask]
+        new_normals = self._normals[selected_pts_mask]
 
-        self.densification_postfix(new_xyz, new_features_dc, new_features_rest, new_opacities, new_scaling, new_rotation)
+        self.densification_postfix(new_xyz, new_features_dc, new_features_rest, new_opacities, new_scaling, new_rotation, new_normals)
 
     def densify_and_prune(self, max_grad, min_opacity, extent, max_screen_size):
         grads = self.xyz_gradient_accum / self.denom
