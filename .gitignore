@@ -6,6 +6,7 @@ data/
 docs/
 tests/
 */repo/
+*/.repo-download/
 */source_commit.txt
 01_3DGS/runtime/**/__pycache__/
 01_3DGS/runtime/**/build/

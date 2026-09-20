@@ -1,0 +1,176 @@
+diff --git a/arguments/__init__.py b/arguments/__init__.py
+--- a/arguments/__init__.py
++++ b/arguments/__init__.py
+@@ -50,6 +50,7 @@ class ModelParams(ParamGroup):
+         self._source_path = ""
+         self._model_path = ""
+         self._images = "images"
++        self.masks = ""
+         self._resolution = -1
+         self._white_background = False
+         self.data_device = "cuda"
+diff --git a/scene/__init__.py b/scene/__init__.py
+--- a/scene/__init__.py
++++ b/scene/__init__.py
+@@ -41,7 +41,7 @@ class Scene:
+         self.test_cameras = {}
+ 
+         if os.path.exists(os.path.join(args.source_path, "sparse")):
+-            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval)
++            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval, masks=args.masks)
+         elif os.path.exists(os.path.join(args.source_path, "transforms_train.json")):
+             print("Found transforms_train.json file, assuming Blender data set!")
+             scene_info = sceneLoadTypeCallbacks["Blender"](args.source_path, args.white_background, args.eval)
+diff --git a/scene/cameras.py b/scene/cameras.py
+--- a/scene/cameras.py
++++ b/scene/cameras.py
+@@ -16,7 +16,7 @@ from utils.graphics_utils import getWorld2View2, getProjectionMatrix
+ 
+ class Camera(nn.Module):
+     def __init__(self, colmap_id, R, T, FoVx, FoVy, image, gt_alpha_mask,
+-                 image_name, uid,
++                 mask, image_name, uid,
+                  trans=np.array([0.0, 0.0, 0.0]), scale=1.0, data_device = "cuda"
+                  ):
+         super(Camera, self).__init__()
+@@ -39,6 +39,10 @@ class Camera(nn.Module):
+         self.original_image = image.clamp(0.0, 1.0) # move to device at dataloader to reduce VRAM requirement
+         self.image_width = self.original_image.shape[2]
+         self.image_height = self.original_image.shape[1]
++        self.raw_mask = mask
++        self.is_masked = None
++        if mask is not None:
++            self.is_masked = (mask == 0).expand(*image.shape)
+ 
+         if gt_alpha_mask is not None:
+             # self.original_image *= gt_alpha_mask.to(self.data_device)
+@@ -70,4 +74,3 @@ class MiniCam:
+         self.full_proj_transform = full_proj_transform
+         view_inv = torch.inverse(self.world_view_transform)
+         self.camera_center = view_inv[3][:3]
+-
+diff --git a/scene/dataset_readers.py b/scene/dataset_readers.py
+--- a/scene/dataset_readers.py
++++ b/scene/dataset_readers.py
+@@ -30,6 +30,8 @@ class CameraInfo(NamedTuple):
+     FovY: np.array
+     FovX: np.array
+     image: np.array
++    mask: np.array
++    mask_path: str
+     image_path: str
+     image_name: str
+     width: int
+@@ -65,8 +67,9 @@ def getNerfppNorm(cam_info):
+ 
+     return {"translate": translate, "radius": radius}
+ 
+-def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
++def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, masks_folder=None):
+     cam_infos = []
++    mask_count = 0
+     for idx, key in enumerate(cam_extrinsics):
+         sys.stdout.write('\r')
+         # the exact output you're looking for:
+@@ -98,9 +101,30 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+         image_name = os.path.basename(image_path).split(".")[0]
+         image = Image.open(image_path)
+ 
++        mask = None
++        mask_path = None
++        if masks_folder is not None and masks_folder != "":
++            possible_mask_path = os.path.join(masks_folder, "{}.mask.png".format(image_name))
++            if os.path.exists(possible_mask_path):
++                mask = Image.open(possible_mask_path)
++                assert mask.size == image.size, "image({}) dimension {} doesn't match to the mask({}) {}".format(
++                    image_name,
++                    image.size,
++                    possible_mask_path,
++                    mask.size,
++                )
++                mask_path = possible_mask_path
++                mask_count += 1
++            else:
++                print(f"masks path {possible_mask_path} is not exist!")
++
+         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
++                              mask=mask, mask_path=mask_path,
+                               image_path=image_path, image_name=image_name, width=width, height=height)
+         cam_infos.append(cam_info)
++    if masks_folder is not None and masks_folder != "":
++        sys.stdout.write('\n')
++        sys.stdout.write("Read {} masks".format(mask_count))
+     sys.stdout.write('\n')
+     return cam_infos
+ 
+@@ -129,7 +153,7 @@ def storePly(path, xyz, rgb):
+     ply_data = PlyData([vertex_element])
+     ply_data.write(path)
+ 
+-def readColmapSceneInfo(path, images, eval, llffhold=8):
++def readColmapSceneInfo(path, images, eval, llffhold=8, masks=None):
+     try:
+         cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.bin")
+         cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.bin")
+@@ -142,7 +166,12 @@ def readColmapSceneInfo(path, images, eval, llffhold=8):
+         cam_intrinsics = read_intrinsics_text(cameras_intrinsic_file)
+ 
+     reading_dir = "images" if images == None else images
+-    cam_infos_unsorted = readColmapCameras(cam_extrinsics=cam_extrinsics, cam_intrinsics=cam_intrinsics, images_folder=os.path.join(path, reading_dir))
++    cam_infos_unsorted = readColmapCameras(
++        cam_extrinsics=cam_extrinsics,
++        cam_intrinsics=cam_intrinsics,
++        images_folder=os.path.join(path, reading_dir),
++        masks_folder=masks,
++    )
+     cam_infos = sorted(cam_infos_unsorted.copy(), key = lambda x : x.image_name)
+ 
+     if eval:
+diff --git a/train.py b/train.py
+--- a/train.py
++++ b/train.py
+@@ -70,6 +76,11 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
+         image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
+         
+         gt_image = viewpoint_cam.original_image.cuda()
++        mask = viewpoint_cam.is_masked
++        if mask is not None:
++            mask = mask.cuda()
++            gt_image = gt_image.clone()
++            gt_image[mask] = image.detach()[mask]
+         Ll1 = l1_loss(image, gt_image)
+         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
+         
+@@ -211,6 +257,11 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
+                     render_pkg = renderFunc(viewpoint, scene.gaussians, *renderArgs)
+                     image = torch.clamp(render_pkg["render"], 0.0, 1.0).to("cuda")
+                     gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
++                    mask = viewpoint.is_masked
++                    if mask is not None:
++                        mask = mask.cuda()
++                        gt_image = gt_image.clone()
++                        gt_image[mask] = image.detach()[mask]
+                     if tb_writer and (idx < 5):
+                         from utils.general_utils import colormap
+                         depth = render_pkg["surf_depth"]
+diff --git a/utils/camera_utils.py b/utils/camera_utils.py
+--- a/utils/camera_utils.py
++++ b/utils/camera_utils.py
+@@ -48,9 +48,16 @@ def loadCam(args, id, cam_info, resolution_scale):
+         loaded_mask = None
+         gt_image = resized_image_rgb
+ 
++    resized_mask = None
++    if cam_info.mask is not None:
++        resized_mask = PILtoTorch(cam_info.mask, resolution)
++        if resized_mask.shape[0] != 1:
++            resized_mask = resized_mask[:1, ...]
++        resized_mask[resized_mask > 0] = 1.
++
+     return Camera(colmap_id=cam_info.uid, R=cam_info.R, T=cam_info.T, 
+                   FoVx=cam_info.FovX, FoVy=cam_info.FovY, 
+-                  image=gt_image, gt_alpha_mask=loaded_mask,
++                  image=gt_image, gt_alpha_mask=loaded_mask, mask=resized_mask,
+                   image_name=cam_info.image_name, uid=id, data_device=args.data_device)
+ 
+ def cameraList_from_camInfos(cam_infos, resolution_scale, args):

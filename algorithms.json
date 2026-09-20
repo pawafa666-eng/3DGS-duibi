@@ -3,8 +3,8 @@
   "dataset_default": "data/地大隧道",
   "methods": [
     {"id": "01", "directory": "01_3DGS", "name": "3D Gaussian Splatting", "url": "bundled custom 3DGS runtime", "repo_dir": "runtime", "source_mode": "bundled", "mask_strategy": "metrics_only", "dataset_compat": "raw"},
-    {"id": "02", "directory": "02_2DGS", "name": "2D Gaussian Splatting", "url": "https://github.com/hbb1/2d-gaussian-splatting.git", "mask_strategy": "native", "dataset_compat": "standard_colmap"},
-    {"id": "03", "directory": "03_Gaussian_Surfels", "name": "Gaussian Surfels", "url": "https://github.com/turandai/gaussian_surfels.git", "mask_strategy": "native", "dataset_compat": "standard_colmap"},
+    {"id": "02", "directory": "02_2DGS", "name": "2D Gaussian Splatting", "url": "https://github.com/hbb1/2d-gaussian-splatting.git", "revision": "f3e3b9fa67bbd1c75e05167ff37391d8dab2a678", "patches": ["patches/02_2DGS_masks.patch"], "mask_strategy": "native", "dataset_compat": "standard_colmap"},
+    {"id": "03", "directory": "03_Gaussian_Surfels", "name": "Gaussian Surfels", "url": "https://github.com/turandai/gaussian_surfels.git", "revision": "01d12493a8be16a8a9f69e76ffe633093f23ebef", "patches": ["patches/03_Gaussian_Surfels_masks.patch"], "mask_strategy": "native", "dataset_compat": "standard_colmap"},
     {"id": "04", "directory": "04_SuGaR", "name": "SuGaR", "url": "https://github.com/Anttwo/SuGaR.git", "mask_strategy": "metrics_only", "dataset_compat": "standard_colmap"},
     {"id": "05", "directory": "05_Mip_Splatting", "name": "Mip-Splatting", "url": "https://github.com/autonomousvision/mip-splatting.git", "mask_strategy": "metrics_only", "dataset_compat": "standard_colmap"},
     {"id": "06", "directory": "06_Scaffold_GS", "name": "Scaffold-GS", "url": "https://github.com/city-super/Scaffold-GS.git", "mask_strategy": "metrics_only", "dataset_compat": "standard_colmap"},
