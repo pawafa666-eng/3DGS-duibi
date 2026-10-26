@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import DatasetLayout, ExperimentDefinition, StageDefinition
+from .runtime_env import algorithm_environment
 from .dataset_compat import (
     DatasetCompatibilityError,
     dataset_compatibility_mode,
@@ -384,6 +385,11 @@ def run_experiment(
     repo = Path(context["repo"])
     if not repo.is_dir():
         return _status(output_dir, status="blocked", error=f"Missing source repository: {repo}", finished_at=now_iso(), exit_code=127)
+    try:
+        runtime_env = algorithm_environment(experiment.id, extension_root=context.get("extension_root"),
+                                            cache_dir=output_dir / ".torch_inductor")
+    except FileNotFoundError as error:
+        return _status(output_dir, status="blocked", error=str(error), finished_at=now_iso(), exit_code=127)
     for stage_name, stage in stages:
         stage_started = time.perf_counter()
         render_snapshot = snapshot_render_images(output_dir) if stage_name == "test" else {}
@@ -406,6 +412,7 @@ def run_experiment(
                 cwd,
                 stdout_path,
                 stderr_path,
+                env=runtime_env,
                 label=f"{experiment.id} {experiment.name} / {stage_name}",
             )
             if observation.peak_gpu_memory_mb is not None:

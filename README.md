@@ -156,6 +156,10 @@ output/03/
 
 失败时，`status.json` 会保存 `stderr_tail`，主控器也会直接显示错误尾部。断点运行不会覆盖原始 `run_config.json`，新的参数写入 `resume_config.json`。
 
+## WSL 合成数据短训练检查
+
+本机已配置 WSL Ubuntu 环境，可运行 `python .\run_wsl_smoke.py`，依次用合成图片、掩码和点云检查真实训练及保存。详见 [README_SYNTHETIC_SMOKE.md](README_SYNTHETIC_SMOKE.md)。04 的 coarse 检查与完整 mesh/refine 流程分别记录，短训练不代表完整 30000 次训练已验证。
+
 ## 单独运行一个方法
 
 每个实验目录都可以独立调用：

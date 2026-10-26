@@ -25,6 +25,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--data", default=str(DEFAULT_DATASET), help="Dataset root containing train/ and test/.")
     parser.add_argument("--output", default="output", help="Output root relative to this folder.")
     parser.add_argument("--iterations", type=int, default=30000)
+    parser.add_argument("--extension-root", help="Per-algorithm CUDA packages with subfolders 01..10; auto-detected in WSL")
     parser.add_argument("--only", nargs="+", help="Experiment ids or directory names to run.")
     parser.add_argument("--experiments", nargs="+", dest="only_alias", help="Alias of --only.")
     parser.add_argument("--continue-on-error", action="store_true")
@@ -69,6 +70,7 @@ def write_run_config(
         "created_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
         "mode": args.mode,
         "iterations": args.iterations,
+        "extension_root": getattr(args, "extension_root", None),
         "dataset_root": str(dataset_root),
         "dataset_report": {"counts": report.counts, "warnings": report.warnings},
         "experiments": [
@@ -135,6 +137,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[{definition.id}] {definition.name}")
         try:
             context = build_context(ROOT, definition, run_dir, dataset_layout(dataset_root), args.iterations)
+            if args.extension_root:
+                context["extension_root"] = _absolute(ROOT, args.extension_root)
         except DatasetCompatibilityError as error:
             print(f"[{definition.id}] blocked: {error}", file=sys.stderr)
             failures.append((definition.id, "blocked"))

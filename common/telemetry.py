@@ -125,11 +125,13 @@ MODEL_SUFFIX_RANK = {".ply": 3, ".splat": 3, ".pt": 2, ".pth": 2, ".ckpt": 2}
 
 def extract_ply_vertex_count(path: Path) -> int | None:
     try:
-        header = Path(path).read_bytes()[:1_048_576].decode("ascii", errors="replace")
+        with Path(path).open("rb") as handle:
+            header = handle.read(1_048_576).decode("ascii", errors="replace")
     except OSError:
         return None
-    match = re.search(r"(?m)^element\s+vertex\s+(\d+)\s*$", header)
-    return int(match.group(1)) if match else None
+    header = header.split("end_header", 1)[0]
+    matches = re.findall(r"(?m)^element\s+vertex(?:_\d+)?\s+(\d+)\s*$", header)
+    return sum(map(int, matches)) if matches else None
 
 
 def _model_candidates(root: Path) -> list[Path]:
