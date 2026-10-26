@@ -1,0 +1,25 @@
+diff --git a/train.py b/train.py
+--- a/train.py
++++ b/train.py
+@@ -66,8 +66,8 @@
+     ssim_file_path = os.path.join(dataset.model_path, "ssim_results.txt")
+     lpips_file_path = os.path.join(dataset.model_path, "lpips_results.txt")
+     count = -1
+-    for iteration in range(first_iter, opt.iterations + 2):
++    for iteration in range(first_iter, opt.iterations + 1):
+ 
+         iter_start.record()
+ 
+         gaussians.update_learning_rate(iteration)
+@@ -221,8 +221,10 @@
+                 normal_wrt = normal2rgb(normal, mask_vis)
+                 depth_wrt = depth2rgb(depth, mask_vis)
+                 img_wrt = torch.cat([gt_image, image, normal_wrt * opac, depth_wrt * opac], 2)
+-                save_image(img_wrt.cpu(), f'test/test.png')
++                preview_dir = os.path.join(dataset.model_path, 'previews')
++                os.makedirs(preview_dir, exist_ok=True)
++                save_image(img_wrt.cpu(), os.path.join(preview_dir, f'iteration_{iteration}.png'))
+                 
+ 
+             
+             if iteration < opt.iterations:

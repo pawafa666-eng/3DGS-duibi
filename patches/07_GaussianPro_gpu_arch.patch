@@ -1,0 +1,14 @@
+diff --git a/submodules/Propagation/setup.py b/submodules/Propagation/setup.py
+--- a/submodules/Propagation/setup.py
++++ b/submodules/Propagation/setup.py
+@@ -19,7 +19,7 @@ setup(
+             extra_compile_args={
+                 'cxx': ['-O3'],
+-                'nvcc': ['-O3',
+-                    '-gencode=arch=compute_86,code=sm_86',
+-                ]
++                # Let PyTorch honor TORCH_CUDA_ARCH_LIST or the visible GPU.
++                # Hard-coding sm_86 fails on newer GPU architectures.
++                'nvcc': ['-O3']
+             }),
+     ],

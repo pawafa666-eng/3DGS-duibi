@@ -1,0 +1,21 @@
+diff --git a/gaussian_splatting/submodules/simple-knn/simple_knn.cu b/gaussian_splatting/submodules/simple-knn/simple_knn.cu
+--- a/gaussian_splatting/submodules/simple-knn/simple_knn.cu
++++ b/gaussian_splatting/submodules/simple-knn/simple_knn.cu
+@@ -17,6 +17,7 @@
+ #include <cub/cub.cuh>
+ #include <cub/device/device_radix_sort.cuh>
+ #include <vector>
++#include <cfloat>
+ #include <cuda_runtime_api.h>
+ #include <thrust/device_vector.h>
+ #include <thrust/sequence.h>
+diff --git a/gaussian_splatting/submodules/diff-gaussian-rasterization/cuda_rasterizer/rasterizer_impl.h b/gaussian_splatting/submodules/diff-gaussian-rasterization/cuda_rasterizer/rasterizer_impl.h
+--- a/gaussian_splatting/submodules/diff-gaussian-rasterization/cuda_rasterizer/rasterizer_impl.h
++++ b/gaussian_splatting/submodules/diff-gaussian-rasterization/cuda_rasterizer/rasterizer_impl.h
+@@ -13,5 +13,6 @@
+ 
+ #include <iostream>
+ #include <vector>
++#include <cstdint>
+ #include "rasterizer.h"
+ #include <cuda_runtime_api.h>

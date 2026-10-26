@@ -2,7 +2,7 @@
   "id": "04",
   "name": "SuGaR",
   "category": "surface_aligned_mesh",
-  "source": {"url": "https://github.com/Anttwo/SuGaR.git", "repo_dir": "repo"},
+  "source": {"url": "https://github.com/Anttwo/SuGaR.git", "repo_dir": "runtime", "commit": "7c10c4ae4a267dece512f5c7f40ed212a0a2ab44"},
   "mask_strategy": "metrics_only",
   "dataset_compat": "standard_colmap",
   "train": {"cwd": "repo", "commands": [["python", "{repo}/train_full_pipeline.py", "-s", "{train_data}", "-r", "dn_consistency", "--low_poly", "True", "--refinement_time", "short", "--export_ply", "True", "--export_obj", "False"]], "artifacts": ["train"]},

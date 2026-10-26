@@ -1,0 +1,102 @@
+--- a/sugar_trainers/coarse_density_and_dn_consistency.py
++++ b/sugar_trainers/coarse_density_and_dn_consistency.py
+@@ -95,6 +95,26 @@
+     return normal_error.mean()
+ 
+ 
++def _smoke_iteration_window(args):
++    """Optional environment smoke budget; None preserves the official schedule.
++
++    Smoke resumes the *counter* at iteration_to_load, not the hard-coded 6999.
++    Loading vanilla iteration 10 therefore performs updates 11..20 and saves
++    20.pt after ten real optimizer steps. Losses and their thresholds remain
++    unchanged: entropy/SDF/depth-normal regularization is excluded at 11..20.
++    This validates coarse training only, never mesh/refine or reconstruction.
++    """
++    steps = getattr(args, 'smoke_iterations', None)
++    if steps is None:
++        return None
++    if type(steps) is not int or not 1 <= steps <= 10:
++        raise ValueError('smoke_iterations must be an integer in [1, 10] or None')
++    loaded = getattr(args, 'iteration_to_load', None)
++    if type(loaded) is not int or loaded < 0:
++        raise ValueError('Smoke requires a nonnegative integer iteration_to_load')
++    return loaded + 1, loaded + steps
++
++
+ def coarse_training_with_density_regularization_and_dn_consistency(args):
+     CONSOLE = Console(width=120)
+ 
+@@ -136,6 +156,12 @@
+ 
+     # Learning rates and scheduling
+     num_iterations = 15_000  # Changed
++    # Explicit opt-in: official calls without this attribute are unchanged.
++    smoke_window = _smoke_iteration_window(args)
++    if smoke_window is not None:
++        num_iterations = smoke_window[1]
++    smoke_actual_updates = 0
++    smoke_losses = []
+ 
+     spatial_lr_scale = None
+     position_lr_init=0.00016
+@@ -559,6 +585,10 @@
+     
+     if initialize_from_trained_3dgs:
+         iteration = 7000 - 1
++    if smoke_window is not None:
++        iteration = smoke_window[0] - 1
++        CONSOLE.print(f'SMOKE ONLY: coarse updates {smoke_window[0]}..{smoke_window[1]}; '
++                      'mesh/refine and inactive regularizers are NOT verified.')
+     
+     for batch in range(9_999_999):
+         if iteration >= num_iterations:
+@@ -849,6 +879,8 @@
+                     loss = loss + surface_mesh_normal_consistency_factor * mesh_normal_consistency(surface_mesh)
+             
+             # Update parameters
++            if smoke_window is not None and not torch.isfinite(loss).all():
++                raise RuntimeError('Non-finite loss in SuGaR coarse smoke training')
+             loss.backward()
+             
+             # Densification
+@@ -872,6 +904,11 @@
+             
+             # Optimization step
+             optimizer.step()
++            if smoke_window is not None:
++                smoke_actual_updates += 1
++                smoke_losses.append(loss.detach().item())
++                if smoke_actual_updates > args.smoke_iterations:
++                    raise RuntimeError('SuGaR smoke exceeded its optimizer update budget')
+             optimizer.zero_grad(set_to_none = True)
+             
+             # Print loss
+@@ -931,12 +968,25 @@
+     CONSOLE.print(f"Training finished after {num_iterations} iterations with loss={loss.detach().item()}.")
+     CONSOLE.print("Saving final model...")
+     model_path = os.path.join(sugar_checkpoint_path, f'{iteration}.pt')
++    smoke_save_kwargs = {}
++    if smoke_window is not None:
++        if (smoke_actual_updates != args.smoke_iterations
++                or optimizer.current_iteration != smoke_actual_updates
++                or iteration != smoke_window[1]):
++            raise RuntimeError('SuGaR smoke did not execute the exact requested updates')
++        smoke_save_kwargs['smoke_metadata'] = {
++            'scope': 'coarse_training', 'actual_updates': smoke_actual_updates,
++            'first_iteration': smoke_window[0], 'last_iteration': iteration,
++            'initialization_iteration': iteration_to_load, 'losses': smoke_losses,
++            'full_pipeline_verified': False,
++        }
+     sugar.save_model(path=model_path,
+                     train_losses=train_losses,
+                     epoch=epoch,
+                     iteration=iteration,
+                     optimizer_state_dict=optimizer.state_dict(),
++                    **smoke_save_kwargs,
+                     )
+ 
+     CONSOLE.print("Final model saved.")
+-    return model_path
+\ No newline at end of file
++    return model_path

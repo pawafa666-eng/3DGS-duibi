@@ -2,7 +2,7 @@
   "id": "06",
   "name": "Scaffold-GS",
   "category": "structured_gaussians",
-  "source": {"url": "https://github.com/city-super/Scaffold-GS.git", "repo_dir": "repo"},
+  "source": {"url": "https://github.com/city-super/Scaffold-GS.git", "repo_dir": "runtime", "commit": "59c833b56bbbf510f3f64d40f81721995caced66"},
   "mask_strategy": "metrics_only",
   "dataset_compat": "standard_colmap",
   "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--iterations", "{iterations}", "--test_iterations", "{iterations}", "--save_iterations", "{iterations}"]], "artifacts": ["train"]},

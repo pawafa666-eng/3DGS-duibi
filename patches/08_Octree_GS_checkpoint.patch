@@ -1,0 +1,104 @@
+diff --git a/scene/gaussian_model.py b/scene/gaussian_model.py
+index bc88d93..25d5aac 100755
+--- a/scene/gaussian_model.py
++++ b/scene/gaussian_model.py
+@@ -12,6 +12,7 @@
+ import time
+ from datetime import timedelta
+ import torch
++from copy import deepcopy
+ from functools import reduce
+ import numpy as np
+ from torch_scatter import scatter_max
+@@ -159,34 +160,65 @@ class GaussianModel:
+             self.embedding_appearance.train()
+ 
+     def capture(self):
+-        return (
+-            self._anchor,
+-            self._level,
+-            self._offset,
+-            self._local,
+-            self._scaling,
+-            self._rotation,
+-            self._opacity,
+-            self.denom,
+-            self.optimizer.state_dict(),
+-            self.spatial_lr_scale,
+-        )
+-    
++        # The upstream tuple referred to _local/denom, which this anchor model
++        # never defines, and omitted both features and trainable networks.
++        parameter_names = ("_anchor", "_offset", "_anchor_feat",
++                           "_scaling", "_rotation", "_opacity")
++        network_names = ("mlp_opacity", "mlp_cov", "mlp_color",
++                         "mlp_feature_bank", "embedding_appearance")
++        statistic_names = ("opacity_accum", "offset_gradient_accum",
++                           "offset_denom", "anchor_demon", "_level", "_extra_level", "_anchor_mask", "_prog_ratio", "transition_mask")
++        metadata_names = ("spatial_lr_scale", "percent_dense", "voxel_size", "levels", "init_level", "standard_dist", "init_pos",
++                          "cam_infos", "base_layer", "visible_threshold", "coarse_intervals",
++                          "start_step", "end_step")
++        config_names = ("feat_dim", "n_offsets", "fork", "use_feat_bank", "appearance_dim",
++                        "add_opacity_dist", "add_cov_dist", "add_color_dist", "add_level",
++                        "progressive", "dist2level", "extend")
++        return {
++            "schema_version": 1,
++            "algorithm": "Octree-GS",
++            "config": {name: getattr(self, name) for name in config_names},
++            "parameters": {name: getattr(self, name).detach().clone()
++                           for name in parameter_names},
++            "requires_grad": {name: getattr(self, name).requires_grad
++                              for name in parameter_names},
++            "networks": {name: deepcopy(getattr(self, name).state_dict())
++                         for name in network_names if getattr(self, name, None) is not None},
++            "statistics": {name: getattr(self, name).detach().clone()
++                           for name in statistic_names if hasattr(self, name)},
++            "metadata": {name: deepcopy(getattr(self, name))
++                         for name in metadata_names if hasattr(self, name)},
++            "optimizer": deepcopy(self.optimizer.state_dict()),
++        }
++
+     def restore(self, model_args, training_args):
+-        (self.active_sh_degree, 
+-        self._anchor, 
+-        self._level,
+-        self._offset,
+-        self._local,
+-        self._scaling, 
+-        self._rotation, 
+-        self._opacity,
+-        denom,
+-        opt_dict, 
+-        self.spatial_lr_scale) = model_args
++        if (not isinstance(model_args, dict) or model_args.get("schema_version") != 1
++                or model_args.get("algorithm") != "Octree-GS"):
++            raise ValueError("Unsupported Octree-GS checkpoint; legacy tuples were incomplete")
++        for name, expected in model_args["config"].items():
++            if getattr(self, name) != expected:
++                raise ValueError(f"Incompatible checkpoint configuration: {name}")
++        required = {"_anchor", "_offset", "_anchor_feat", "_scaling", "_rotation", "_opacity"}
++        if set(model_args["parameters"]) != required:
++            raise ValueError("Incomplete Octree-GS checkpoint parameters")
++        for name, value in model_args["parameters"].items():
++            setattr(self, name, nn.Parameter(value.detach().clone(),
++                    requires_grad=model_args["requires_grad"][name]))
++        for name, value in model_args["metadata"].items():
++            setattr(self, name, deepcopy(value))
++        expected_networks = {name for name in ("mlp_opacity", "mlp_cov", "mlp_color",
++                             "mlp_feature_bank", "embedding_appearance")
++                             if getattr(self, name, None) is not None}
++        if set(model_args["networks"]) != expected_networks:
++            raise ValueError("Incomplete Octree-GS checkpoint networks")
++        for name, state in model_args["networks"].items():
++            getattr(self, name).load_state_dict(state)
++        # Rebuild optimizer references AFTER replacing anchor parameters, then
++        # restore accumulators that training_setup otherwise resets to zero.
+         self.training_setup(training_args)
+-        self.denom = denom
+-        self.optimizer.load_state_dict(opt_dict)
++        for name, value in model_args["statistics"].items():
++            setattr(self, name, value.detach().clone())
++        self.optimizer.load_state_dict(model_args["optimizer"])
+ 
+     @property
+     def get_appearance(self):

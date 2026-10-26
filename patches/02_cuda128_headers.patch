@@ -1,0 +1,21 @@
+diff --git a/submodules/simple-knn/simple_knn.cu b/submodules/simple-knn/simple_knn.cu
+--- a/submodules/simple-knn/simple_knn.cu
++++ b/submodules/simple-knn/simple_knn.cu
+@@ -17,6 +17,7 @@
+ #include <cub/cub.cuh>
+ #include <cub/device/device_radix_sort.cuh>
+ #include <vector>
++#include <cfloat>
+ #include <cuda_runtime_api.h>
+ #include <thrust/device_vector.h>
+ #include <thrust/sequence.h>
+diff --git a/submodules/diff-surfel-rasterization/cuda_rasterizer/rasterizer_impl.h b/submodules/diff-surfel-rasterization/cuda_rasterizer/rasterizer_impl.h
+--- a/submodules/diff-surfel-rasterization/cuda_rasterizer/rasterizer_impl.h
++++ b/submodules/diff-surfel-rasterization/cuda_rasterizer/rasterizer_impl.h
+@@ -13,5 +13,6 @@
+ 
+ #include <iostream>
+ #include <vector>
++#include <cstdint>
+ #include "rasterizer.h"
+ #include <cuda_runtime_api.h>

@@ -2,7 +2,7 @@
   "id": "08",
   "name": "Octree-GS",
   "category": "lod_structured_gaussians",
-  "source": {"url": "https://github.com/city-super/Octree-GS.git", "repo_dir": "repo"},
+  "source": {"url": "https://github.com/city-super/Octree-GS.git", "repo_dir": "runtime", "commit": "9db64fe8981f5d6a1002c41cbc275a14f4d5ea0c"},
   "mask_strategy": "metrics_only",
   "dataset_compat": "standard_colmap",
   "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--iterations", "{iterations}", "--test_iterations", "{iterations}", "--save_iterations", "{iterations}"]], "artifacts": ["train"]},

@@ -23,7 +23,11 @@ data/地大隧道/
 | 09 | [Reduced-3DGS](https://github.com/graphdeco-inria/reduced-3dgs) | 轻量化表示 | metrics_only |
 | 10 | Concrete-GS（随仓库附带的可训练版本） | 本文方法 | native |
 
-每个方法都有独立目录 `NN_算法/`，包括 `experiment.json`、`run.py`、说明文档和源码目录。01 和 10 的源码目录是仓库内的 `runtime/`，其余外部方法默认使用 `repo/`。`algorithms.json` 是总清单。
+每个方法都有独立目录 `NN_算法/`，包括 `experiment.json`、`run.py`、说明文档和内置源码目录 `runtime/`。10 个方法的必要训练源码、CUDA 源码和本项目修复均随仓库分发；来源和上游版本见 `RUNTIME_SOURCES.json`，总清单是 `algorithms.json`。
+
+**Ubuntu 安装与复现请先阅读 [UBUNTU_SETUP.md](UBUNTU_SETUP.md)**，包括驱动、CUDA、Conda、固定依赖、PyTorch3D 编译、算法扩展隔离、10 次迭代检查和正式训练命令。合成输入检查的范围见 [README_SYNTHETIC_SMOKE.md](README_SYNTHETIC_SMOKE.md)。
+
+本次实际结果：9 个算法完成短训练与保存检查；SuGaR 为 coarse 部分通过，完整网格/refine 未验证。见 [SMOKE_TEST_RESULTS.md](SMOKE_TEST_RESULTS.md)。
 
 ## 第一次准备源码
 
@@ -34,7 +38,7 @@ python .\setup_repositories.py
 
 在当前 Conda 环境运行即可，补全脚本只依赖 Python 标准库和 Git，不需要先导入 PyTorch。也可以双击 `setup_repositories.bat`；原来的 `setup_repositories.ps1` 入口保留，调用同一脚本。
 
-脚本检查全部 10 个方法：01、10 使用本仓库自带的 `runtime/`；02--09 缺少 `repo/` 时自动下载官方源码，并递归补齐未初始化的 Git 子模块（包括 CUDA 扩展源码）。02、03 新下载的源码固定到清单中的版本，并应用随仓库分发的 mask 接口补丁，避免现有命令的 `--masks` 参数不被识别。无需依赖本机的其它实验目录。
+此版本的 10 个方法均使用仓库内置 `runtime/`，脚本检查源码是否齐全；正常克隆完整仓库后不需要再下载 02～09 的 `repo/`。必要修复已经应用，`patches/` 另存修复记录。脚本仍兼容旧版外部仓库清单，但不会用官方源码覆盖本项目内置实现。
 
 下载时显示 Git 进度，每条网络命令默认尝试 3 次；单个方法失败会继续处理后面的算法，最后返回非零退出码并列出失败编号。看到 `Source setup: 10/10 ready` 后再启动训练。报告在 `output/.repository_setup/report.json`，每个算法的来源和 commit 另存到 `source_commit.txt`。
 
@@ -44,7 +48,7 @@ python .\setup_repositories.py
 python .\setup_repositories.py --only 02 03 04 05 06 07 08 09
 ```
 
-本 GitHub 仓库保存运行框架、01/10 必要源码和兼容补丁，不保存 `data/`、训练结果、02--09 外部仓库及下载缓存。补全脚本不改数据、不启动训练、也不安装 Python 包或编译 CUDA 扩展；各方法仍需按其 README 准备匹配的环境，不保证它们能共用同一个 `3dgs` 环境。
+本 GitHub 仓库保存运行框架、全部 10 个方法的必要源码、兼容补丁和 PyTorch3D 源码快照，不保存 `data/`、训练结果、Conda 环境或编译二进制。补全脚本不改数据、不启动训练，也不安装 Python 包或编译 CUDA 扩展；按 Ubuntu 配置文档准备环境后，扩展分别编译到编号目录，避免同名 rasterizer 相互覆盖。
 
 02--09 使用的当前数据是自定义 `points3D.bin`，总控运行时会在 `output/.dataset_compat/` 建立隔离的标准 COLMAP 兼容视图：复制 `cameras.bin`、`images.bin`，把自定义点记录转换为标准格式，并通过 junction 复用 images/masks。源数据不会被改写，兼容缓存按数据文件指纹复用。01 和 10 继续直接使用原始自定义格式。
 

@@ -2,7 +2,7 @@
   "id": "03",
   "name": "Gaussian Surfels",
   "category": "surface_reconstruction",
-  "source": {"url": "https://github.com/turandai/gaussian_surfels.git", "repo_dir": "repo"},
+  "source": {"url": "https://github.com/turandai/gaussian_surfels.git", "repo_dir": "runtime", "commit": "01d12493a8be16a8a9f69e76ffe633093f23ebef"},
   "mask_strategy": "native",
   "dataset_compat": "standard_colmap",
   "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--images", "images", "--masks", "{train_masks}", "--iterations", "{iterations}"]], "artifacts": ["train"]},

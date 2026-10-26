@@ -1,0 +1,160 @@
+[
+  {
+    "id": "01",
+    "directory": "01_3DGS",
+    "upstream": "bundled custom 3DGS runtime",
+    "upstream_revision": "custom bundled implementation",
+    "patches_already_applied": [],
+    "runtime": "01_3DGS/runtime",
+    "files": 485,
+    "git_blob_bytes": 2401448,
+    "git_blob_manifest_sha256": "fd8473019112b053f33e17e31808a86816a1a7aea38601d8d5f60c1612074e3f",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "02",
+    "directory": "02_2DGS",
+    "upstream": "https://github.com/hbb1/2d-gaussian-splatting.git",
+    "upstream_revision": "f3e3b9fa67bbd1c75e05167ff37391d8dab2a678",
+    "patches_already_applied": [
+      "patches/02_2DGS_masks.patch",
+      "patches/02_cuda128_headers.patch",
+      "patches/02_2DGS_matplotlib.patch"
+    ],
+    "runtime": "02_2DGS/runtime",
+    "files": 517,
+    "git_blob_bytes": 2848671,
+    "git_blob_manifest_sha256": "8cee33bbd09a59e858d19150edf4c8eb4bfcd703796893b9d4df9cd4af665535",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "03",
+    "directory": "03_Gaussian_Surfels",
+    "upstream": "https://github.com/turandai/gaussian_surfels.git",
+    "upstream_revision": "01d12493a8be16a8a9f69e76ffe633093f23ebef",
+    "patches_already_applied": [
+      "patches/03_Gaussian_Surfels_masks.patch",
+      "patches/03_cuda128_headers.patch",
+      "patches/03_Gaussian_Surfels_training.patch"
+    ],
+    "runtime": "03_Gaussian_Surfels/runtime",
+    "files": 504,
+    "git_blob_bytes": 2993156,
+    "git_blob_manifest_sha256": "4dae2827ec64dc2af570884e8c9ca64ea7b586ed13a435a686a152ff7ec271f9",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "04",
+    "directory": "04_SuGaR",
+    "upstream": "https://github.com/Anttwo/SuGaR.git",
+    "upstream_revision": "7c10c4ae4a267dece512f5c7f40ed212a0a2ab44",
+    "patches_already_applied": [
+      "patches/04_cuda128_headers.patch",
+      "patches/04_SuGaR_smoke.patch"
+    ],
+    "runtime": "04_SuGaR/runtime",
+    "files": 630,
+    "git_blob_bytes": 4513778,
+    "git_blob_manifest_sha256": "211a10305a30b004d7b6c934d235843fe03e59dc0d514c1013f68924b46a9a31",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "05",
+    "directory": "05_Mip_Splatting",
+    "upstream": "https://github.com/autonomousvision/mip-splatting.git",
+    "upstream_revision": "dda02ab5ecf45d6edb8c540d9bb65c7e451345a9",
+    "patches_already_applied": [
+      "patches/05_cuda128_headers.patch"
+    ],
+    "runtime": "05_Mip_Splatting/runtime",
+    "files": 499,
+    "git_blob_bytes": 2727772,
+    "git_blob_manifest_sha256": "ef42d47360139a22b3b8bf39c36a7a638d19f70d81f9827ea23cd01eb5ba48a8",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "06",
+    "directory": "06_Scaffold_GS",
+    "upstream": "https://github.com/city-super/Scaffold-GS.git",
+    "upstream_revision": "59c833b56bbbf510f3f64d40f81721995caced66",
+    "patches_already_applied": [
+      "patches/06_Scaffold_GS_portability.patch",
+      "patches/06_cuda128_headers.patch",
+      "patches/06_Scaffold_GS_checkpoint.patch"
+    ],
+    "runtime": "06_Scaffold_GS/runtime",
+    "files": 501,
+    "git_blob_bytes": 2807924,
+    "git_blob_manifest_sha256": "4779201a9a5ac74187c9aec72eb8c7d67c121a70e2192e564f92fd06aa31e623",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "07",
+    "directory": "07_GaussianPro",
+    "upstream": "https://github.com/kcheng1021/GaussianPro.git",
+    "upstream_revision": "86bb04848c35bf7a919da870046adfcf5bb67a33",
+    "patches_already_applied": [
+      "patches/07_GaussianPro_gpu_arch.patch",
+      "patches/07_cuda128_headers.patch"
+    ],
+    "runtime": "07_GaussianPro/runtime",
+    "files": 503,
+    "git_blob_bytes": 2806028,
+    "git_blob_manifest_sha256": "5fda1c847309d550542b2cb32a186f0e44a450831c6b70fe5e5cd40e62623df5",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "08",
+    "directory": "08_Octree_GS",
+    "upstream": "https://github.com/city-super/Octree-GS.git",
+    "upstream_revision": "9db64fe8981f5d6a1002c41cbc275a14f4d5ea0c",
+    "patches_already_applied": [
+      "patches/08_Octree_GS_portability.patch",
+      "patches/08_cuda128_headers.patch",
+      "patches/08_Octree_GS_checkpoint.patch"
+    ],
+    "runtime": "08_Octree_GS/runtime",
+    "files": 498,
+    "git_blob_bytes": 2835192,
+    "git_blob_manifest_sha256": "fc2341e8a16fbf806b81d7fa82e9bff0cb53457134a1f719a642803ea26b928b",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "09",
+    "directory": "09_Reduced_3DGS",
+    "upstream": "https://github.com/graphdeco-inria/reduced-3dgs.git",
+    "upstream_revision": "e725373aec898abc646e739a1813cbbc5891c4c9",
+    "patches_already_applied": [
+      "patches/09_cuda128_headers.patch"
+    ],
+    "runtime": "09_Reduced_3DGS/runtime",
+    "files": 501,
+    "git_blob_bytes": 2854042,
+    "git_blob_manifest_sha256": "4a10092182294f3b7d0c615e4beb81d243f2381af8254f6eb2424903e6f67e00",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "id": "10",
+    "directory": "10_Concrete_GS",
+    "upstream": "bundled custom Concrete-GS runtime",
+    "upstream_revision": "custom bundled implementation",
+    "patches_already_applied": [],
+    "runtime": "10_Concrete_GS/runtime",
+    "files": 485,
+    "git_blob_bytes": 2398932,
+    "git_blob_manifest_sha256": "93d186d2366cc70f3222031a2c4e5174099f251ce28a7e5a768e468e45822adc",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  },
+  {
+    "dependency": "pytorch3d",
+    "version": "0.7.9",
+    "upstream": "https://github.com/facebookresearch/pytorch3d",
+    "archive_url": "https://codeload.github.com/facebookresearch/pytorch3d/tar.gz/refs/heads/main",
+    "downloaded_archive_sha256": "57d50439e86cd423aaee8f2aef5ab5008d9ddce35c0744d56551359f18aca4cd",
+    "note": "Vendored source snapshot; installation does not fetch floating main.",
+    "files": 351,
+    "git_blob_bytes": 3219620,
+    "git_blob_manifest_sha256": "f021ad883d1a8817f3e23bcb052ec2aabbba679c685f060e504e2ce5fb4af399",
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+  }
+]

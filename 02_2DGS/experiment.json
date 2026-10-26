@@ -2,7 +2,7 @@
   "id": "02",
   "name": "2D Gaussian Splatting",
   "category": "surface_representation",
-  "source": {"url": "https://github.com/hbb1/2d-gaussian-splatting.git", "repo_dir": "repo"},
+  "source": {"url": "https://github.com/hbb1/2d-gaussian-splatting.git", "repo_dir": "runtime", "commit": "f3e3b9fa67bbd1c75e05167ff37391d8dab2a678"},
   "mask_strategy": "native",
   "dataset_compat": "standard_colmap",
   "train": {"cwd": "repo", "commands": [["python", "{repo}/train.py", "-s", "{train_data}", "-m", "{train_output}", "--masks", "{train_masks}", "--iterations", "{iterations}", "--test_iterations", "{iterations}", "--save_iterations", "{iterations}"]], "artifacts": ["train"]},

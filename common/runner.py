@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import DatasetLayout, ExperimentDefinition, StageDefinition
-from .runtime_env import algorithm_environment
+from .runtime_env import algorithm_environment, validate_native_modules
 from .dataset_compat import (
     DatasetCompatibilityError,
     dataset_compatibility_mode,
@@ -388,7 +388,10 @@ def run_experiment(
     try:
         runtime_env = algorithm_environment(experiment.id, extension_root=context.get("extension_root"),
                                             cache_dir=output_dir / ".torch_inductor")
-    except FileNotFoundError as error:
+        if "PYTHONPATH" in runtime_env:
+            validate_native_modules(sys.executable, runtime_env["PYTHONPATH"].split(os.pathsep)[0],
+                                    experiment.id, env=runtime_env)
+    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
         return _status(output_dir, status="blocked", error=str(error), finished_at=now_iso(), exit_code=127)
     for stage_name, stage in stages:
         stage_started = time.perf_counter()
