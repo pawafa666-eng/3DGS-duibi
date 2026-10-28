@@ -267,7 +267,7 @@ class GaussianModel:
             if half_float:
                 # No float 16 for plydata, so we just pointer cast everything to int16
                 for i in range(len(centers_numpy_list)):
-                    centers_numpy_list[i] = np.cast[np.float16](centers_numpy_list[i]).view(dtype=np.int16)
+                    centers_numpy_list[i] = centers_numpy_list[i].astype(np.float16).view(dtype=np.int16)
                 
             codebooks[:] = list(map(tuple, np.concatenate([ar for ar in centers_numpy_list], axis=1)))
                 

@@ -1,0 +1,373 @@
+diff --git a/sugar_extractors/coarse_mesh.py b/sugar_extractors/coarse_mesh.py
+index 414a0f2..99b5e86 100644
+--- a/sugar_extractors/coarse_mesh.py
++++ b/sugar_extractors/coarse_mesh.py
+@@ -510,7 +510,7 @@ def extract_mesh_from_coarse_sugar(args):
+                     if use_vanilla_3dgs:
+                         sugar_mesh_path = 'sugarmesh_vanilla3dgs_levelZZ_decimAA.ply'
+                     else:
+-                        sugar_mesh_path = 'sugarmesh_' + sugar_checkpoint_path.split('/')[-2].replace('sugarcoarse_', '') + '_levelZZ_decimAA.ply'
++                        sugar_mesh_path = 'sugarmesh_' + os.path.basename(os.path.dirname(sugar_checkpoint_path)).replace('sugarcoarse_', '') + '_levelZZ_decimAA.ply'
+                     sugar_mesh_path = sugar_mesh_path.replace(
+                         'ZZ', str(surface_level).replace('.', '')
+                         ).replace(
+@@ -645,7 +645,7 @@ def extract_mesh_from_coarse_sugar(args):
+                     if use_vanilla_3dgs:
+                         sugar_mesh_path = 'sugarmesh_vanilla3dgs_poissoncenters_decimAA.ply'
+                     else:
+-                        sugar_mesh_path = 'sugarmesh_' + sugar_checkpoint_path.split('/')[-2].replace('sugarcoarse_', '') + '_poissoncenters_decimAA.ply'
++                        sugar_mesh_path = 'sugarmesh_' + os.path.basename(os.path.dirname(sugar_checkpoint_path)).replace('sugarcoarse_', '') + '_poissoncenters_decimAA.ply'
+                     sugar_mesh_path = sugar_mesh_path.replace(
+                             'AA', str(decimation_target).replace('.', '')
+                             )
+@@ -778,7 +778,7 @@ def extract_mesh_from_coarse_sugar(args):
+         if use_vanilla_3dgs:
+             sugar_mesh_path = 'sugarmesh_vanilla3dgsmarchingcubes_levelZZ_decimAA.ply'
+         else:
+-            sugar_mesh_path = 'sugarmesh_' + sugar_checkpoint_path.split('/')[-2].replace('sugarcoarse_', '') + 'marchingcubes_levelZZ_decimAA.ply'
++            sugar_mesh_path = 'sugarmesh_' + os.path.basename(os.path.dirname(sugar_checkpoint_path)).replace('sugarcoarse_', '') + 'marchingcubes_levelZZ_decimAA.ply'
+         sugar_mesh_path = sugar_mesh_path.replace(
+             'ZZ', str(surface_level).replace('.', '')
+             ).replace(
+@@ -789,4 +789,4 @@ def extract_mesh_from_coarse_sugar(args):
+         CONSOLE.print("Mesh saved at", sugar_mesh_path)
+         all_sugar_mesh_paths.append(sugar_mesh_path)
+         
+-    return all_sugar_mesh_paths
+\ No newline at end of file
++    return all_sugar_mesh_paths
+diff --git a/sugar_extractors/refined_mesh.py b/sugar_extractors/refined_mesh.py
+index 8b2671f..69b9c3a 100644
+--- a/sugar_extractors/refined_mesh.py
++++ b/sugar_extractors/refined_mesh.py
+@@ -29,7 +29,7 @@ def extract_mesh_and_texture_from_refined_sugar(args):
+     # --- Fine model parameters ---
+     refined_model_path = args.refined_model_path
+     if args.n_gaussians_per_surface_triangle is None:
+-        n_gaussians_per_surface_triangle = int(refined_model_path.split('/')[-2].split('_gaussperface')[-1])
++        n_gaussians_per_surface_triangle = int(os.path.basename(os.path.dirname(refined_model_path)).split('_gaussperface')[-1])
+     else:
+         n_gaussians_per_surface_triangle = args.n_gaussians_per_surface_triangle
+     
+@@ -42,7 +42,7 @@ def extract_mesh_and_texture_from_refined_sugar(args):
+     mesh_output_dir = args.mesh_output_dir
+     os.makedirs(mesh_output_dir, exist_ok=True)
+     
+-    mesh_save_path = refined_model_path.split('/')[-2]
++    mesh_save_path = os.path.basename(os.path.dirname(refined_model_path))
+     if args.postprocess_mesh:
+         mesh_save_path = mesh_save_path + '_postprocessed'
+     mesh_save_path = mesh_save_path + '.obj'
+@@ -50,7 +50,8 @@ def extract_mesh_and_texture_from_refined_sugar(args):
+     
+     scene_name = source_path.split('/')[-2] if len(source_path.split('/')[-1]) == 0 else source_path.split('/')[-1]
+     sugar_mesh_path = os.path.join('./output/coarse_mesh/', scene_name, 
+-                                refined_model_path.split('/')[-2].split('_normalconsistency')[0].replace('sugarfine', 'sugarmesh') + '.ply')
++                                os.path.basename(os.path.dirname(refined_model_path)).split('_normalconsistency')[0].replace('sugarfine', 'sugarmesh') + '.ply')
++    sugar_mesh_path = getattr(args, 'coarse_mesh_path', None) or sugar_mesh_path
+     
+     if args.square_size is None:
+         if n_gaussians_per_surface_triangle == 1:
+@@ -230,4 +231,4 @@ def extract_mesh_and_texture_from_refined_sugar(args):
+             )
+         
+     CONSOLE.print("Texture saved at:", mesh_save_path)
+-    return mesh_save_path
+\ No newline at end of file
++    return mesh_save_path
+diff --git a/sugar_trainers/refine.py b/sugar_trainers/refine.py
+index 5625fa8..966fa22 100644
+--- a/sugar_trainers/refine.py
++++ b/sugar_trainers/refine.py
+@@ -260,7 +260,7 @@ def refined_training(args):
+     source_path = args.scene_path
+     gs_checkpoint_path = args.checkpoint_path
+     surface_mesh_to_bind_path = args.mesh_path
+-    mesh_name = surface_mesh_to_bind_path.split("/")[-1].split(".")[0]
++    mesh_name = os.path.basename(surface_mesh_to_bind_path).split(".")[0]
+     iteration_to_load = args.iteration_to_load    
+     
+     surface_mesh_normal_consistency_factor = args.normal_consistency_factor    
+@@ -878,12 +878,15 @@ def refined_training(args):
+     if export_ply_at_the_end:
+         # Build path
+         CONSOLE.print("\nExporting ply file with refined Gaussians...")
+-        tmp_list = model_path.split(os.sep)
+-        tmp_list[-4] = 'refined_ply'
+-        tmp_list.pop(-1)
+-        tmp_list[-1] = tmp_list[-1] + '.ply'
+-        refined_ply_save_dir = os.path.join(*tmp_list[:-1])
+-        refined_ply_save_path = os.path.join(*tmp_list)
++        refined_ply_save_dir = getattr(args, 'refined_ply_dir', None)
++        if refined_ply_save_dir is None:
++            # Preserve the upstream output/refined_ply/<scene> layout.
++            model_dir = os.path.dirname(model_path)
++            scene_dir = os.path.dirname(model_dir)
++            refined_ply_save_dir = os.path.join(os.path.dirname(os.path.dirname(scene_dir)),
++                                                'refined_ply', os.path.basename(scene_dir))
++        refined_ply_save_path = os.path.join(refined_ply_save_dir,
++                                             os.path.basename(os.path.dirname(model_path)) + '.ply')
+         
+         os.makedirs(refined_ply_save_dir, exist_ok=True)
+         
+@@ -892,4 +895,4 @@ def refined_training(args):
+         refined_gaussians.save_ply(refined_ply_save_path)
+         CONSOLE.print("Ply file exported. This file is needed for using the dedicated viewer.")
+     
+-    return model_path
+\ No newline at end of file
++    return model_path
+diff --git a/train.py b/train.py
+index 61da781..3019445 100644
+--- a/train.py
++++ b/train.py
+@@ -1,4 +1,6 @@
+ import argparse
++import json
++from pathlib import Path
+ from sugar_utils.general_utils import str2bool
+ from sugar_trainers.coarse_density import coarse_training_with_density_regularization
+ from sugar_trainers.coarse_sdf import coarse_training_with_sdf_regularization
+@@ -14,6 +16,13 @@ class AttrDict(dict):
+             self.__dict__ = self
+ 
+ 
++def require_artifact(path, label):
++    result = Path(path).resolve()
++    if not result.is_file() or result.stat().st_size == 0:
++        raise RuntimeError(f'{label} artifact missing or empty: {result}')
++    return str(result)
++
++
+ if __name__ == "__main__":
+     # ----- Parser -----
+     parser = argparse.ArgumentParser(description='Script to optimize a full SuGaR model.')
+@@ -28,6 +37,8 @@ if __name__ == "__main__":
+     parser.add_argument('-i', '--iteration_to_load', 
+                         type=int, default=7000, 
+                         help='iteration to load.')
++    parser.add_argument('--output_dir', type=str, default=None,
++                        help='Store the complete pipeline output in this directory.')
+     
+     # Regularization for coarse SuGaR
+     parser.add_argument('-r', '--regularization_type', type=str,
+@@ -91,6 +102,13 @@ if __name__ == "__main__":
+ 
+     # Parse arguments
+     args = parser.parse_args()
++    output_dir = Path(args.output_dir).resolve() if args.output_dir is not None else None
++    artifacts = {}
++    if output_dir is not None:
++        output_dir.mkdir(parents=True, exist_ok=True)
++        artifacts['vanilla'] = require_artifact(
++            Path(args.checkpoint_path) / 'point_cloud' / f'iteration_{args.iteration_to_load}' / 'point_cloud.ply',
++            'vanilla')
+     if args.low_poly:
+         args.n_vertices_in_mesh = 200_000
+         args.gaussians_per_triangle = 6
+@@ -118,7 +136,7 @@ if __name__ == "__main__":
+         'checkpoint_path': args.checkpoint_path,
+         'scene_path': args.scene_path,
+         'iteration_to_load': args.iteration_to_load,
+-        'output_dir': None,
++        'output_dir': str(output_dir / 'coarse') if output_dir is not None else None,
+         'eval': args.eval,
+         'estimation_factor': 0.2,
+         'normal_factor': 0.2,
+@@ -133,6 +151,8 @@ if __name__ == "__main__":
+         coarse_sugar_path = coarse_training_with_density_regularization_and_dn_consistency(coarse_args)
+     else:
+         raise ValueError(f'Unknown regularization type: {args.regularization_type}')
++    if output_dir is not None:
++        artifacts['coarse'] = require_artifact(coarse_sugar_path, 'coarse')
+     
+     
+     # ----- Extract mesh from coarse SuGaR -----
+@@ -144,7 +164,7 @@ if __name__ == "__main__":
+         'surface_level': args.surface_level,
+         'decimation_target': args.n_vertices_in_mesh,
+         'project_mesh_on_surface_points': args.project_mesh_on_surface_points,
+-        'mesh_output_dir': None,
++        'mesh_output_dir': str(output_dir / 'coarse_mesh') if output_dir is not None else None,
+         'bboxmin': args.bboxmin,
+         'bboxmax': args.bboxmax,
+         'center_bbox': args.center_bbox,
+@@ -155,6 +175,8 @@ if __name__ == "__main__":
+         'use_vanilla_3dgs': False,
+     })
+     coarse_mesh_path = extract_mesh_from_coarse_sugar(coarse_mesh_args)[0]
++    if output_dir is not None:
++        artifacts['coarse_mesh'] = require_artifact(coarse_mesh_path, 'coarse mesh')
+     
+     
+     # ----- Refine SuGaR -----
+@@ -162,7 +184,8 @@ if __name__ == "__main__":
+         'scene_path': args.scene_path,
+         'checkpoint_path': args.checkpoint_path,
+         'mesh_path': coarse_mesh_path,      
+-        'output_dir': None,
++        'output_dir': str(output_dir / 'refined') if output_dir is not None else None,
++        'refined_ply_dir': str(output_dir / 'refined_ply') if output_dir is not None else None,
+         'iteration_to_load': args.iteration_to_load,
+         'normal_consistency_factor': 0.1,    
+         'gaussians_per_triangle': args.gaussians_per_triangle,        
+@@ -176,6 +199,11 @@ if __name__ == "__main__":
+         'white_background': args.white_background,
+     })
+     refined_sugar_path = refined_training(refined_args)
++    if output_dir is not None:
++        artifacts['refined'] = require_artifact(refined_sugar_path, 'refined')
++        if args.export_ply:
++            refined_ply = output_dir / 'refined_ply' / (Path(refined_sugar_path).parent.name + '.ply')
++            artifacts['refined_ply'] = require_artifact(refined_ply, 'refined PLY')
+     
+     
+     # ----- Extract mesh and texture from refined SuGaR -----
+@@ -185,7 +213,8 @@ if __name__ == "__main__":
+             'iteration_to_load': args.iteration_to_load,
+             'checkpoint_path': args.checkpoint_path,
+             'refined_model_path': refined_sugar_path,
+-            'mesh_output_dir': None,
++            'mesh_output_dir': str(output_dir / 'refined_mesh') if output_dir is not None else None,
++            'coarse_mesh_path': coarse_mesh_path if output_dir is not None else None,
+             'n_gaussians_per_surface_triangle': args.gaussians_per_triangle,
+             'square_size': args.square_size,
+             'eval': args.eval,
+@@ -195,4 +224,13 @@ if __name__ == "__main__":
+             'postprocess_iterations': args.postprocess_iterations,
+         })
+         refined_mesh_path = extract_mesh_and_texture_from_refined_sugar(refined_mesh_args)
+-        
+\ No newline at end of file
++        if output_dir is not None:
++            artifacts['refined_mesh'] = require_artifact(refined_mesh_path, 'refined mesh')
++
++    if output_dir is not None:
++        manifest = {'artifacts': artifacts, 'vanilla_iterations': args.iteration_to_load,
++                    'coarse_final_iteration': 15000, 'refinement_iterations': args.refinement_iterations,
++                    'eval_split': args.eval, 'regularization_type': args.regularization_type}
++        manifest_path = output_dir / 'pipeline_results.json'
++        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
++        print(f'Complete SuGaR pipeline results: {manifest_path}', flush=True)
+diff --git a/train_full_pipeline.py b/train_full_pipeline.py
+index be9d005..5ad6693 100644
+--- a/train_full_pipeline.py
++++ b/train_full_pipeline.py
+@@ -1,5 +1,9 @@
+ import os
+ import argparse
++import subprocess
++import sys
++import uuid
++from pathlib import Path
+ from sugar_utils.general_utils import str2bool
+ 
+ 
+@@ -22,6 +26,10 @@ if __name__ == "__main__":
+     parser.add_argument('--gs_output_dir', type=str, default=None,
+                         help='(Optional) If None, will automatically train a vanilla Gaussian Splatting model at the beginning of the training. '
+                         'Else, skips the vanilla Gaussian Splatting optimization and use the checkpoint in the provided directory.')
++    parser.add_argument('--output_dir', type=str, default=None,
++                        help='Directory for this run; stages are stored in a new attempt subdirectory.')
++    parser.add_argument('--train_only', action='store_true',
++                        help='Disable 3DGS validation and SuGaR eval split.')
+     
+     # Regularization for coarse SuGaR
+     parser.add_argument('-r', '--regularization_type', type=str,
+@@ -85,6 +93,14 @@ if __name__ == "__main__":
+ 
+     # Parse arguments
+     args = parser.parse_args()
++    if args.train_only:
++        args.eval = False
++    runtime_dir = Path(__file__).resolve().parent
++    attempt_dir = None
++    if args.output_dir is not None:
++        attempt_dir = Path(args.output_dir).resolve() / ('attempt_' + uuid.uuid4().hex)
++        attempt_dir.mkdir(parents=True, exist_ok=False)
++        print(f'SuGaR attempt directory: {attempt_dir}', flush=True)
+     if args.low_poly:
+         args.n_vertices_in_mesh = 200_000
+         args.gaussians_per_triangle = 6
+@@ -117,45 +133,45 @@ if __name__ == "__main__":
+         gs_checkpoint_dir = gs_checkpoint_dir + sep
+ 
+         # Trains a 3DGS scene for 7k iterations
+-        white_background_str = '-w ' if args.white_background else ''
+-        os.system(
+-            f"CUDA_VISIBLE_DEVICES={args.gpu} python ./gaussian_splatting/train.py \
+-                -s {args.scene_path} \
+-                -m {gs_checkpoint_dir} \
+-                {white_background_str}\
+-                --iterations 7_000"
+-        )
++        if attempt_dir is not None:
++            gs_checkpoint_dir = str(attempt_dir / 'vanilla_gs')
++        command = [sys.executable, str(runtime_dir / 'gaussian_splatting' / 'train.py'),
++                   '-s', args.scene_path, '-m', gs_checkpoint_dir, '--iterations', '7000']
++        if args.white_background:
++            command.append('-w')
++        if args.train_only:
++            command.extend(['--test_iterations', '-1'])
++        env = os.environ.copy()
++        env['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
++        subprocess.run(command, cwd=str(runtime_dir), env=env, check=True)
+     else:
+         print("A vanilla 3DGS checkpoint was provided. Skipping the vanilla 3DGS optimization.")
+         gs_checkpoint_dir = args.gs_output_dir
+         if gs_checkpoint_dir[-1] != os.path.sep:
+             gs_checkpoint_dir += os.path.sep
++
++    # SuGaR's camera loader appends 'cameras.json' to this string directly.
++    if not gs_checkpoint_dir.endswith(os.path.sep):
++        gs_checkpoint_dir += os.path.sep
+     
+     # Runs the train.py python script with the given arguments
+-    os.system(
+-        f"python train.py \
+-            -s {args.scene_path} \
+-            -c {gs_checkpoint_dir} \
+-            -i 7_000 \
+-            -r {args.regularization_type} \
+-            -l {args.surface_level} \
+-            -v {args.n_vertices_in_mesh} \
+-            --project_mesh_on_surface_points {args.project_mesh_on_surface_points} \
+-            -g {args.gaussians_per_triangle} \
+-            -f {args.refinement_iterations} \
+-            --bboxmin {args.bboxmin} \
+-            --bboxmax {args.bboxmax} \
+-            --center_bbox {args.center_bbox} \
+-            -t {args.export_obj} \
+-            --square_size {args.square_size} \
+-            --postprocess_mesh {args.postprocess_mesh} \
+-            --postprocess_density_threshold {args.postprocess_density_threshold} \
+-            --postprocess_iterations {args.postprocess_iterations} \
+-            --export_ply {args.export_ply} \
+-            --low_poly {args.low_poly} \
+-            --high_poly {args.high_poly} \
+-            --refinement_time {args.refinement_time} \
+-            --eval {args.eval} \
+-            --gpu {args.gpu} \
+-            --white_background {args.white_background}"
+-    )
+\ No newline at end of file
++    vanilla_ply = Path(gs_checkpoint_dir) / 'point_cloud' / 'iteration_7000' / 'point_cloud.ply'
++    if not vanilla_ply.is_file() or vanilla_ply.stat().st_size == 0:
++        raise RuntimeError(f'Vanilla 3DGS checkpoint missing or empty: {vanilla_ply}')
++    command = [sys.executable, str(runtime_dir / 'train.py'),
++        '-s', args.scene_path, '-c', gs_checkpoint_dir, '-i', '7000',
++        '-r', str(args.regularization_type), '-l', str(args.surface_level),
++        '-v', str(args.n_vertices_in_mesh),
++        '--project_mesh_on_surface_points', str(args.project_mesh_on_surface_points),
++        '-g', str(args.gaussians_per_triangle), '-f', str(args.refinement_iterations),
++        '--bboxmin', str(args.bboxmin), '--bboxmax', str(args.bboxmax),
++        '--center_bbox', str(args.center_bbox), '-t', str(args.export_obj),
++        '--square_size', str(args.square_size), '--postprocess_mesh', str(args.postprocess_mesh),
++        '--postprocess_density_threshold', str(args.postprocess_density_threshold),
++        '--postprocess_iterations', str(args.postprocess_iterations), '--export_ply', str(args.export_ply),
++        '--low_poly', str(args.low_poly), '--high_poly', str(args.high_poly),
++        '--refinement_time', str(args.refinement_time), '--eval', str(args.eval),
++        '--gpu', str(args.gpu), '--white_background', str(args.white_background)]
++    if attempt_dir is not None:
++        command.extend(['--output_dir', str(attempt_dir)])
++    subprocess.run(command, cwd=str(runtime_dir), check=True)

@@ -260,7 +260,7 @@ def refined_training(args):
     source_path = args.scene_path
     gs_checkpoint_path = args.checkpoint_path
     surface_mesh_to_bind_path = args.mesh_path
-    mesh_name = surface_mesh_to_bind_path.split("/")[-1].split(".")[0]
+    mesh_name = os.path.basename(surface_mesh_to_bind_path).split(".")[0]
     iteration_to_load = args.iteration_to_load    
     
     surface_mesh_normal_consistency_factor = args.normal_consistency_factor    
@@ -878,12 +878,15 @@ def refined_training(args):
     if export_ply_at_the_end:
         # Build path
         CONSOLE.print("\nExporting ply file with refined Gaussians...")
-        tmp_list = model_path.split(os.sep)
-        tmp_list[-4] = 'refined_ply'
-        tmp_list.pop(-1)
-        tmp_list[-1] = tmp_list[-1] + '.ply'
-        refined_ply_save_dir = os.path.join(*tmp_list[:-1])
-        refined_ply_save_path = os.path.join(*tmp_list)
+        refined_ply_save_dir = getattr(args, 'refined_ply_dir', None)
+        if refined_ply_save_dir is None:
+            # Preserve the upstream output/refined_ply/<scene> layout.
+            model_dir = os.path.dirname(model_path)
+            scene_dir = os.path.dirname(model_dir)
+            refined_ply_save_dir = os.path.join(os.path.dirname(os.path.dirname(scene_dir)),
+                                                'refined_ply', os.path.basename(scene_dir))
+        refined_ply_save_path = os.path.join(refined_ply_save_dir,
+                                             os.path.basename(os.path.dirname(model_path)) + '.ply')
         
         os.makedirs(refined_ply_save_dir, exist_ok=True)
         

@@ -50,12 +50,13 @@
     "upstream_revision": "7c10c4ae4a267dece512f5c7f40ed212a0a2ab44",
     "patches_already_applied": [
       "patches/04_cuda128_headers.patch",
-      "patches/04_SuGaR_smoke.patch"
+      "patches/04_SuGaR_smoke.patch",
+      "patches/04_SuGaR_train_only.patch"
     ],
     "runtime": "04_SuGaR/runtime",
     "files": 630,
-    "git_blob_bytes": 4513778,
-    "git_blob_manifest_sha256": "211a10305a30b004d7b6c934d235843fe03e59dc0d514c1013f68924b46a9a31",
+    "git_blob_bytes": 4518322,
+    "git_blob_manifest_sha256": "204cccb0fe51f063d70f14d5acb4035c1154379da8c944c0bada31e854d89995",
     "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
   },
   {
@@ -125,12 +126,13 @@
     "upstream": "https://github.com/graphdeco-inria/reduced-3dgs.git",
     "upstream_revision": "e725373aec898abc646e739a1813cbbc5891c4c9",
     "patches_already_applied": [
-      "patches/09_cuda128_headers.patch"
+      "patches/09_cuda128_headers.patch",
+      "patches/09_Reduced_3DGS_numpy2.patch"
     ],
     "runtime": "09_Reduced_3DGS/runtime",
     "files": 501,
-    "git_blob_bytes": 2854042,
-    "git_blob_manifest_sha256": "4a10092182294f3b7d0c615e4beb81d243f2381af8254f6eb2424903e6f67e00",
+    "git_blob_bytes": 2854040,
+    "git_blob_manifest_sha256": "c41ddb1b30b8bdbb9584498f2178b96dcfc1d3ecfbe58f668ae38e3afca05f78",
     "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
   },
   {

@@ -22,7 +22,8 @@ training. No dependency installation or replacement algorithm is used.
 
 SOURCE CONTRACT, audited checkout 7c10c4ae4a267dece512f5c7f40ed212a0a2ab44:
 * train_full_pipeline.py launches vanilla for 7000 steps and train.py with
-  iteration_to_load=7000 via os.system; neither is a safe short-test launcher.
+  iteration_to_load=7000; neither is a safe short-test launcher. The bundled
+  full pipeline uses checked subprocess calls; older upstream uses os.system.
 * All three sugar_trainers/coarse_*.py functions hard-code num_iterations=15000,
   restart their counter at 7000-1, and activate their surface loss after 9000.
   Their args have no coarse iteration budget. Setting a new args.iterations
@@ -112,7 +113,7 @@ def audit_source(repo):
     files = {}
     for relative in SOURCE_FILES:
         record = {"assignments": [], "args_read": [], "save_model_lines": [],
-                  "shell_launches": [], "cli_arguments": []}
+                  "shell_launches": [], "process_launches": [], "cli_arguments": []}
         files[relative] = record
         try:
             path = repo / relative
@@ -141,6 +142,12 @@ def audit_source(repo):
                         and isinstance(node.func.value, ast.Name)
                         and node.func.value.id == "os" and node.func.attr == "system"):
                     record["shell_launches"].append({
+                        "line": node.lineno, "source": ast.get_source_segment(source, node),
+                    })
+                if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "subprocess" and node.func.attr == "run"):
+                    record["process_launches"].append({
                         "line": node.lineno, "source": ast.get_source_segment(source, node),
                     })
                 if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
@@ -195,12 +202,13 @@ def audit_source(repo):
         blockers.append({"code": "source_audit_incomplete", "evidence": errors,
                          "message": "Required official source files could not be audited."})
     launches = files["train_full_pipeline.py"]["shell_launches"]
-    if any("--iterations 7_000" in launch["source"] for launch in launches):
+    process_launches = files["train_full_pipeline.py"]["process_launches"]
+    if any("--iterations 7_000" in launch["source"] for launch in launches) or process_launches:
         blockers.append({
             "code": "full_pipeline_unbounded_launcher",
-            "evidence": [f"train_full_pipeline.py:{launch['line']}" for launch in launches],
-            "message": "The official full-pipeline launcher uses os.system, hard-codes "
-                       "7000 vanilla iterations and loads iteration 7000. Refinement "
+            "evidence": [f"train_full_pipeline.py:{launch['line']}" for launch in launches + process_launches],
+            "message": "The full-pipeline launcher starts separate training processes; "
+                       "the bundled version runs 7000 vanilla iterations and loads iteration 7000. Refinement "
                        "iterations alone do not cap the pipeline; this launcher is never run.",
         })
     blockers.append({

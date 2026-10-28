@@ -31,7 +31,7 @@ data/地大隧道/
 
 ## 第一次准备源码
 
-已有 Ubuntu 环境时，可以使用 `python setup_and_train.py --resume 03 --only 01 03 04 06 07 08 09 10 --continue-on-error`，先准备选中算法的扩展再训练。CUDA 路径会自动识别，也可通过 `--cuda /usr/local/cuda-11.8` 显式指定；准备失败不会进入训练。
+已有 Ubuntu 环境时，可以使用 `python setup_and_train.py --resume 03 --only 03 04 06 08 --continue-on-error`，先准备选中算法的扩展再训练。示例跳过已经训练或保存的 01、02、07、09、10，以及暂缓的 05。CUDA 路径会自动识别，也可通过 `--cuda /usr/local/cuda-11.8` 显式指定；准备失败不会进入训练。
 
 ```powershell
 git pull origin main
@@ -58,7 +58,7 @@ python .\setup_repositories.py --only 02 03 04 05 06 07 08 09
 
 ## 运行全部 10 个实验
 
-默认只训练并保存模型，每个实验 30000 次迭代，不进入 test 阶段，也不执行训练中的定期整组验证：
+默认只训练并保存模型，不进入 test 阶段，也不执行训练中的定期整组验证。大多数方法默认 30000 次迭代；04 SuGaR 使用自身的分阶段训练计划，详见其说明：
 
 ```powershell
 python .\main.py --mode train

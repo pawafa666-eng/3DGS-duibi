@@ -1,6 +1,6 @@
 """Prepare sources and isolated CUDA extensions, then run training only.
 
-Ubuntu: python setup_and_train.py --resume 03 --only 01 03 04 06 07 08 09 10
+Ubuntu: python setup_and_train.py --resume 03 --only 03 04 06 08
 Main-runner arguments are forwarded. --cuda can select an existing toolkit.
 """
 import argparse

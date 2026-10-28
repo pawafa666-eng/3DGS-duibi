@@ -262,10 +262,10 @@ Concrete-GS 保留本项目指定的 `position_lr_init=0.0000016`、`position_lr
 推荐使用一个入口，顺序完成源码检查、选中算法的独立扩展编译、训练：
 
 ```bash
-python setup_and_train.py --cuda /usr/local/cuda-11.8 --resume 03 --only 01 03 04 06 07 08 09 10 --continue-on-error
+python setup_and_train.py --cuda /usr/local/cuda-11.8 --resume 03 --only 03 04 06 08 --continue-on-error
 ```
 
-这条命令明确跳过 02 和暂缓处理的 05；编译失败时不会启动训练。请整行复制。`--resume` 不再固定为旧示例的 05，选中的算法、数据目录和迭代参数会转发给正式主控入口。省略 `--cuda` 时会自动识别 toolkit。
+这条命令针对已有 `output/03` 的情况，跳过已经训练或保存的 01、02、07、09、10，以及暂缓处理的 05；编译失败时不会启动训练。09 最后一步保存失败时可从已有量化模型恢复半精度文件，命令见 `09_Reduced_3DGS/README.md`；不要通过重新训练来恢复。请整行复制。选中的算法、数据目录和迭代参数会转发给正式主控入口，但 04 SuGaR 使用自己的分阶段迭代计划。省略 `--cuda` 时会自动识别 toolkit。
 
 `main.py` 和每个算法的 `run.py` 默认只训练；主控入口也可显式使用 `--mode train`。此模式不启动 test 阶段，并关闭训练中的定期整组验证。06、08 额外跳过训练后自带的渲染/评估。训练本身需要的损失、梯度、增密和模型保存仍照常进行。
 

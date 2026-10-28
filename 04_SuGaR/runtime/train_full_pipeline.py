@@ -1,5 +1,9 @@
 import os
 import argparse
+import subprocess
+import sys
+import uuid
+from pathlib import Path
 from sugar_utils.general_utils import str2bool
 
 
@@ -22,6 +26,10 @@ if __name__ == "__main__":
     parser.add_argument('--gs_output_dir', type=str, default=None,
                         help='(Optional) If None, will automatically train a vanilla Gaussian Splatting model at the beginning of the training. '
                         'Else, skips the vanilla Gaussian Splatting optimization and use the checkpoint in the provided directory.')
+    parser.add_argument('--output_dir', type=str, default=None,
+                        help='Directory for this run; stages are stored in a new attempt subdirectory.')
+    parser.add_argument('--train_only', action='store_true',
+                        help='Disable 3DGS validation and SuGaR eval split.')
     
     # Regularization for coarse SuGaR
     parser.add_argument('-r', '--regularization_type', type=str,
@@ -85,6 +93,14 @@ if __name__ == "__main__":
 
     # Parse arguments
     args = parser.parse_args()
+    if args.train_only:
+        args.eval = False
+    runtime_dir = Path(__file__).resolve().parent
+    attempt_dir = None
+    if args.output_dir is not None:
+        attempt_dir = Path(args.output_dir).resolve() / ('attempt_' + uuid.uuid4().hex)
+        attempt_dir.mkdir(parents=True, exist_ok=False)
+        print(f'SuGaR attempt directory: {attempt_dir}', flush=True)
     if args.low_poly:
         args.n_vertices_in_mesh = 200_000
         args.gaussians_per_triangle = 6
@@ -117,45 +133,45 @@ if __name__ == "__main__":
         gs_checkpoint_dir = gs_checkpoint_dir + sep
 
         # Trains a 3DGS scene for 7k iterations
-        white_background_str = '-w ' if args.white_background else ''
-        os.system(
-            f"CUDA_VISIBLE_DEVICES={args.gpu} python ./gaussian_splatting/train.py \
-                -s {args.scene_path} \
-                -m {gs_checkpoint_dir} \
-                {white_background_str}\
-                --iterations 7_000"
-        )
+        if attempt_dir is not None:
+            gs_checkpoint_dir = str(attempt_dir / 'vanilla_gs')
+        command = [sys.executable, str(runtime_dir / 'gaussian_splatting' / 'train.py'),
+                   '-s', args.scene_path, '-m', gs_checkpoint_dir, '--iterations', '7000']
+        if args.white_background:
+            command.append('-w')
+        if args.train_only:
+            command.extend(['--test_iterations', '-1'])
+        env = os.environ.copy()
+        env['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+        subprocess.run(command, cwd=str(runtime_dir), env=env, check=True)
     else:
         print("A vanilla 3DGS checkpoint was provided. Skipping the vanilla 3DGS optimization.")
         gs_checkpoint_dir = args.gs_output_dir
         if gs_checkpoint_dir[-1] != os.path.sep:
             gs_checkpoint_dir += os.path.sep
+
+    # SuGaR's camera loader appends 'cameras.json' to this string directly.
+    if not gs_checkpoint_dir.endswith(os.path.sep):
+        gs_checkpoint_dir += os.path.sep
     
     # Runs the train.py python script with the given arguments
-    os.system(
-        f"python train.py \
-            -s {args.scene_path} \
-            -c {gs_checkpoint_dir} \
-            -i 7_000 \
-            -r {args.regularization_type} \
-            -l {args.surface_level} \
-            -v {args.n_vertices_in_mesh} \
-            --project_mesh_on_surface_points {args.project_mesh_on_surface_points} \
-            -g {args.gaussians_per_triangle} \
-            -f {args.refinement_iterations} \
-            --bboxmin {args.bboxmin} \
-            --bboxmax {args.bboxmax} \
-            --center_bbox {args.center_bbox} \
-            -t {args.export_obj} \
-            --square_size {args.square_size} \
-            --postprocess_mesh {args.postprocess_mesh} \
-            --postprocess_density_threshold {args.postprocess_density_threshold} \
-            --postprocess_iterations {args.postprocess_iterations} \
-            --export_ply {args.export_ply} \
-            --low_poly {args.low_poly} \
-            --high_poly {args.high_poly} \
-            --refinement_time {args.refinement_time} \
-            --eval {args.eval} \
-            --gpu {args.gpu} \
-            --white_background {args.white_background}"
-    )
+    vanilla_ply = Path(gs_checkpoint_dir) / 'point_cloud' / 'iteration_7000' / 'point_cloud.ply'
+    if not vanilla_ply.is_file() or vanilla_ply.stat().st_size == 0:
+        raise RuntimeError(f'Vanilla 3DGS checkpoint missing or empty: {vanilla_ply}')
+    command = [sys.executable, str(runtime_dir / 'train.py'),
+        '-s', args.scene_path, '-c', gs_checkpoint_dir, '-i', '7000',
+        '-r', str(args.regularization_type), '-l', str(args.surface_level),
+        '-v', str(args.n_vertices_in_mesh),
+        '--project_mesh_on_surface_points', str(args.project_mesh_on_surface_points),
+        '-g', str(args.gaussians_per_triangle), '-f', str(args.refinement_iterations),
+        '--bboxmin', str(args.bboxmin), '--bboxmax', str(args.bboxmax),
+        '--center_bbox', str(args.center_bbox), '-t', str(args.export_obj),
+        '--square_size', str(args.square_size), '--postprocess_mesh', str(args.postprocess_mesh),
+        '--postprocess_density_threshold', str(args.postprocess_density_threshold),
+        '--postprocess_iterations', str(args.postprocess_iterations), '--export_ply', str(args.export_ply),
+        '--low_poly', str(args.low_poly), '--high_poly', str(args.high_poly),
+        '--refinement_time', str(args.refinement_time), '--eval', str(args.eval),
+        '--gpu', str(args.gpu), '--white_background', str(args.white_background)]
+    if attempt_dir is not None:
+        command.extend(['--output_dir', str(attempt_dir)])
+    subprocess.run(command, cwd=str(runtime_dir), check=True)

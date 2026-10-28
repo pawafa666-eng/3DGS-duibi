@@ -202,11 +202,13 @@ def test_actual_checkout_exposes_all_three_unsafe_coarse_schedules():
 
 
 @pytest.mark.skipif(not REAL_REPO.is_dir(), reason="external SuGaR checkout absent")
-def test_full_pipeline_shell_commands_and_missing_coarse_cli_cap_are_recorded():
+def test_full_pipeline_process_commands_and_missing_coarse_cli_cap_are_recorded():
     audit = sugar_smoke.audit_source(REAL_REPO)
-    launches = audit["files"]["train_full_pipeline.py"]["shell_launches"]
+    pipeline = audit["files"]["train_full_pipeline.py"]
+    assert pipeline["shell_launches"] == []
+    launches = pipeline["process_launches"]
     assert len(launches) == 2
-    assert any("--iterations 7_000" in launch["source"] for launch in launches)
+    assert all("check=True" in launch["source"] for launch in launches)
     flags = {flag for entry in audit["files"]["train.py"]["cli_arguments"]
              for flag in entry["flags"]}
     assert "--refinement_iterations" in flags

@@ -5,8 +5,8 @@
   "source": {"url": "https://github.com/Anttwo/SuGaR.git", "repo_dir": "runtime", "commit": "7c10c4ae4a267dece512f5c7f40ed212a0a2ab44"},
   "mask_strategy": "metrics_only",
   "dataset_compat": "standard_colmap",
-  "train": {"cwd": "repo", "commands": [["python", "{repo}/train_full_pipeline.py", "-s", "{train_data}", "-r", "dn_consistency", "--low_poly", "True", "--refinement_time", "short", "--export_ply", "True", "--export_obj", "False"]], "artifacts": ["train"]},
+  "train": {"cwd": "repo", "commands": [["python", "{repo}/train_full_pipeline.py", "-s", "{train_data}", "-r", "dn_consistency", "--output_dir", "{train_output}", "--train_only", "--eval", "False", "--low_poly", "True", "--refinement_time", "short", "--export_ply", "True", "--export_obj", "False"]], "artifacts": ["train"]},
   "test": {"cwd": "repo", "commands": [["python", "{root}/common/metrics.py", "--render-root", "{train_output}", "--data", "{test_data}", "--masks", "{test_masks}", "--output", "{test_output}/test_metrics.json"]], "artifacts": ["test"]},
   "artifacts": ["train", "test"],
-  "notes": "The upstream pipeline is multi-stage and documents Windows incompatibility; this entry records the official command and will stop as blocked/failed until adapted for the local environment."
+  "notes": "Full upstream schedule: vanilla 3DGS 7000, coarse final iteration 15000, coarse mesh extraction and 2000 refinement iterations. The controller's generic iterations value does not change this multi-stage schedule. Each attempt stores all stage artifacts and pipeline_results.json under train."
 }

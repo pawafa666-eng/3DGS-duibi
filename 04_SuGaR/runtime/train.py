@@ -1,4 +1,6 @@
 import argparse
+import json
+from pathlib import Path
 from sugar_utils.general_utils import str2bool
 from sugar_trainers.coarse_density import coarse_training_with_density_regularization
 from sugar_trainers.coarse_sdf import coarse_training_with_sdf_regularization
@@ -12,6 +14,13 @@ class AttrDict(dict):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.__dict__ = self
+
+
+def require_artifact(path, label):
+    result = Path(path).resolve()
+    if not result.is_file() or result.stat().st_size == 0:
+        raise RuntimeError(f'{label} artifact missing or empty: {result}')
+    return str(result)
 
 
 if __name__ == "__main__":
@@ -28,6 +37,8 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--iteration_to_load', 
                         type=int, default=7000, 
                         help='iteration to load.')
+    parser.add_argument('--output_dir', type=str, default=None,
+                        help='Store the complete pipeline output in this directory.')
     
     # Regularization for coarse SuGaR
     parser.add_argument('-r', '--regularization_type', type=str,
@@ -91,6 +102,13 @@ if __name__ == "__main__":
 
     # Parse arguments
     args = parser.parse_args()
+    output_dir = Path(args.output_dir).resolve() if args.output_dir is not None else None
+    artifacts = {}
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        artifacts['vanilla'] = require_artifact(
+            Path(args.checkpoint_path) / 'point_cloud' / f'iteration_{args.iteration_to_load}' / 'point_cloud.ply',
+            'vanilla')
     if args.low_poly:
         args.n_vertices_in_mesh = 200_000
         args.gaussians_per_triangle = 6
@@ -118,7 +136,7 @@ if __name__ == "__main__":
         'checkpoint_path': args.checkpoint_path,
         'scene_path': args.scene_path,
         'iteration_to_load': args.iteration_to_load,
-        'output_dir': None,
+        'output_dir': str(output_dir / 'coarse') if output_dir is not None else None,
         'eval': args.eval,
         'estimation_factor': 0.2,
         'normal_factor': 0.2,
@@ -133,6 +151,8 @@ if __name__ == "__main__":
         coarse_sugar_path = coarse_training_with_density_regularization_and_dn_consistency(coarse_args)
     else:
         raise ValueError(f'Unknown regularization type: {args.regularization_type}')
+    if output_dir is not None:
+        artifacts['coarse'] = require_artifact(coarse_sugar_path, 'coarse')
     
     
     # ----- Extract mesh from coarse SuGaR -----
@@ -144,7 +164,7 @@ if __name__ == "__main__":
         'surface_level': args.surface_level,
         'decimation_target': args.n_vertices_in_mesh,
         'project_mesh_on_surface_points': args.project_mesh_on_surface_points,
-        'mesh_output_dir': None,
+        'mesh_output_dir': str(output_dir / 'coarse_mesh') if output_dir is not None else None,
         'bboxmin': args.bboxmin,
         'bboxmax': args.bboxmax,
         'center_bbox': args.center_bbox,
@@ -155,6 +175,8 @@ if __name__ == "__main__":
         'use_vanilla_3dgs': False,
     })
     coarse_mesh_path = extract_mesh_from_coarse_sugar(coarse_mesh_args)[0]
+    if output_dir is not None:
+        artifacts['coarse_mesh'] = require_artifact(coarse_mesh_path, 'coarse mesh')
     
     
     # ----- Refine SuGaR -----
@@ -162,7 +184,8 @@ if __name__ == "__main__":
         'scene_path': args.scene_path,
         'checkpoint_path': args.checkpoint_path,
         'mesh_path': coarse_mesh_path,      
-        'output_dir': None,
+        'output_dir': str(output_dir / 'refined') if output_dir is not None else None,
+        'refined_ply_dir': str(output_dir / 'refined_ply') if output_dir is not None else None,
         'iteration_to_load': args.iteration_to_load,
         'normal_consistency_factor': 0.1,    
         'gaussians_per_triangle': args.gaussians_per_triangle,        
@@ -176,6 +199,11 @@ if __name__ == "__main__":
         'white_background': args.white_background,
     })
     refined_sugar_path = refined_training(refined_args)
+    if output_dir is not None:
+        artifacts['refined'] = require_artifact(refined_sugar_path, 'refined')
+        if args.export_ply:
+            refined_ply = output_dir / 'refined_ply' / (Path(refined_sugar_path).parent.name + '.ply')
+            artifacts['refined_ply'] = require_artifact(refined_ply, 'refined PLY')
     
     
     # ----- Extract mesh and texture from refined SuGaR -----
@@ -185,7 +213,8 @@ if __name__ == "__main__":
             'iteration_to_load': args.iteration_to_load,
             'checkpoint_path': args.checkpoint_path,
             'refined_model_path': refined_sugar_path,
-            'mesh_output_dir': None,
+            'mesh_output_dir': str(output_dir / 'refined_mesh') if output_dir is not None else None,
+            'coarse_mesh_path': coarse_mesh_path if output_dir is not None else None,
             'n_gaussians_per_surface_triangle': args.gaussians_per_triangle,
             'square_size': args.square_size,
             'eval': args.eval,
@@ -195,4 +224,13 @@ if __name__ == "__main__":
             'postprocess_iterations': args.postprocess_iterations,
         })
         refined_mesh_path = extract_mesh_and_texture_from_refined_sugar(refined_mesh_args)
-        
+        if output_dir is not None:
+            artifacts['refined_mesh'] = require_artifact(refined_mesh_path, 'refined mesh')
+
+    if output_dir is not None:
+        manifest = {'artifacts': artifacts, 'vanilla_iterations': args.iteration_to_load,
+                    'coarse_final_iteration': 15000, 'refinement_iterations': args.refinement_iterations,
+                    'eval_split': args.eval, 'regularization_type': args.regularization_type}
+        manifest_path = output_dir / 'pipeline_results.json'
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
+        print(f'Complete SuGaR pipeline results: {manifest_path}', flush=True)
