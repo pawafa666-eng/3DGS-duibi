@@ -177,6 +177,16 @@ PY
 
 ## 7. 分别编译各算法 CUDA 扩展
 
+编译脚本现在优先识别当前环境的 `CUDA_HOME`、PATH 中的 `nvcc` 和已经安装的 toolkit，选择与 `torch.version.cuda` 匹配的版本，不再写死 CUDA 12.8。已有 PyTorch CUDA 11.8 且 `/usr/local/cuda-11.8/bin/nvcc` 存在时，可以直接使用现有工具链，不需要为了本脚本另外安装 12.8。
+
+显式指定已有 CUDA 11.8：
+
+```bash
+python wsl_build_extensions.py --cuda /usr/local/cuda-11.8 --jobs 1
+```
+
+编译前会打印当前 Python、PyTorch CUDA 版本和实际选择的 nvcc 路径。找不到编译器或 CUDA 主版本不匹配时，在构建任何包之前停止，避免所有算法重复报相同错误。已有工具链的选择和编译不需要 Ubuntu 的 sudo 密码。
+
 从项目根目录执行：
 
 ```bash
@@ -248,6 +258,14 @@ Concrete-GS 保留本项目指定的 `position_lr_init=0.0000016`、`position_lr
 ## 10. 常见错误的处理位置
 
 ### 只训练时续跑，以及 01 的扩展混用
+
+推荐使用一个入口，顺序完成源码检查、选中算法的独立扩展编译、训练：
+
+```bash
+python setup_and_train.py --cuda /usr/local/cuda-11.8 --resume 03 --only 01 03 04 06 07 08 09 10 --continue-on-error
+```
+
+这条命令明确跳过 02 和暂缓处理的 05；编译失败时不会启动训练。请整行复制。`--resume` 不再固定为旧示例的 05，选中的算法、数据目录和迭代参数会转发给正式主控入口。省略 `--cuda` 时会自动识别 toolkit。
 
 `main.py` 和每个算法的 `run.py` 默认只训练；主控入口也可显式使用 `--mode train`。此模式不启动 test 阶段，并关闭训练中的定期整组验证。06、08 额外跳过训练后自带的渲染/评估。训练本身需要的损失、梯度、增密和模型保存仍照常进行。
 

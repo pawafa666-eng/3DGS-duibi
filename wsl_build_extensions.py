@@ -19,20 +19,23 @@ import sys
 
 from common.config import discover_experiments
 from common.runtime_env import validate_native_modules
+from common.cuda_toolkit import find_cuda_toolkit, CudaToolkitError
 
 ROOT = Path(__file__).resolve().parent
 
 
-def compiler_environment(cuda: Path, jobs: int):
+def compiler_environment(cuda: Path, jobs: int, cuda_version=None):
     env = dict(os.environ)
     prefix = Path(sys.prefix)
-    env.update(CUDA_HOME=str(cuda), MAX_JOBS=str(jobs),
-               TORCH_CUDA_ARCH_LIST="12.0", PYTHONUNBUFFERED="1")
+    env.update(CUDA_HOME=str(cuda), MAX_JOBS=str(jobs), PYTHONUNBUFFERED="1")
     # Prefer this conda environment's CUDA-compatible GCC over Ubuntu GCC 15.
     cc = prefix / "bin/x86_64-conda-linux-gnu-cc"
     cxx = prefix / "bin/x86_64-conda-linux-gnu-c++"
-    if cc.exists() and cxx.exists():
-        env.update(CC=str(cc), CXX=str(cxx), CUDAHOSTCXX=str(cxx))
+    # Keep CUDA 11.x's compiler configuration; do not force our GCC 13 onto it.
+    if cc.exists() and cxx.exists() and cuda_version and int(cuda_version.split('.')[0]) >= 12:
+        env.setdefault("CC", str(cc))
+        env.setdefault("CXX", str(cxx))
+        env.setdefault("CUDAHOSTCXX", str(cxx))
     env["PATH"] = str(prefix / "bin") + os.pathsep + str(cuda / "bin") + os.pathsep + env.get("PATH", "")
     return env
 
@@ -60,7 +63,7 @@ def main(argv=None):
     parser.add_argument("--only", nargs="+", default=[f"{i:02d}" for i in range(1, 11)])
     parser.add_argument("--extension-root", type=Path, default=Path.home() / "3dgs-comparison-extensions")
     parser.add_argument("--build-root", type=Path, default=Path.home() / "3dgs-comparison-builds")
-    parser.add_argument("--cuda", type=Path, default=Path("/usr/local/cuda-12.8"))
+    parser.add_argument("--cuda", type=Path, help="CUDA toolkit root; auto-detect CUDA_HOME, PATH and installed toolkits by default")
     parser.add_argument("--jobs", type=int, default=1)
     args = parser.parse_args(argv)
     if args.jobs < 1:
@@ -68,13 +71,26 @@ def main(argv=None):
     if sys.platform != "linux":
         parser.error("Use this script INSIDE WSL Ubuntu")
     import torch
+    try:
+        if torch.version.cuda is None:
+            raise CudaToolkitError("This Python has CPU-only PyTorch; CUDA-enabled PyTorch is required.")
+        toolkit = find_cuda_toolkit(args.cuda, torch_cuda=torch.version.cuda)
+    except CudaToolkitError as error:
+        print(f"CUDA setup failed before any package build: {error}", file=sys.stderr, flush=True)
+        return 2
+    print(f"Python: {sys.executable}\nPyTorch: {torch.__version__} (CUDA {torch.version.cuda})"
+          f"\nCUDA toolkit: {toolkit.home} (nvcc {toolkit.version})", flush=True)
     capability = torch.cuda.get_device_capability()
-    env = compiler_environment(args.cuda, args.jobs)
+    env = compiler_environment(toolkit.home, args.jobs, toolkit.version)
     env["TORCH_CUDA_ARCH_LIST"] = f"{capability[0]}.{capability[1]}"
     args.extension_root.mkdir(parents=True, exist_ok=True)
     args.build_root.mkdir(parents=True, exist_ok=True)
     log_root = ROOT / "output/wsl_build_logs" / datetime.now().strftime("%Y%m%d_%H%M%S")
     log_root.mkdir(parents=True, exist_ok=False)
+    (log_root / "environment.json").write_text(json.dumps({
+        "python": sys.executable, "torch": torch.__version__, "torch_cuda": torch.version.cuda,
+        "cuda_home": str(toolkit.home), "nvcc_version": toolkit.version,
+        "gpu_arch": env["TORCH_CUDA_ARCH_LIST"], "CC": env.get("CC"), "CXX": env.get("CXX")}, indent=2))
     results = []
     ids = {str(i).zfill(2) for i in args.only}
     for definition in discover_experiments(ROOT):

@@ -31,6 +31,8 @@ data/地大隧道/
 
 ## 第一次准备源码
 
+已有 Ubuntu 环境时，可以使用 `python setup_and_train.py --resume 03 --only 01 03 04 06 07 08 09 10 --continue-on-error`，先准备选中算法的扩展再训练。CUDA 路径会自动识别，也可通过 `--cuda /usr/local/cuda-11.8` 显式指定；准备失败不会进入训练。
+
 ```powershell
 git pull origin main
 python .\setup_repositories.py
