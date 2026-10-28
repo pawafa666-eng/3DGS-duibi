@@ -9,7 +9,7 @@ from typing import Iterable
 from common.config import discover_experiments
 from common.dataset import dataset_layout, validate_dataset_layout
 from common.dataset_compat import DatasetCompatibilityError, dataset_compatibility_mode
-from common.runner import build_context, next_run_dir, resolve_resume_dir, run_experiment, should_skip_experiment
+from common.runner import build_context, next_run_dir, resolve_resume_dir, run_experiment, should_skip_experiment, reuse_completed_training
 from common.summary import write_summary
 
 
@@ -21,7 +21,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run all 10 3DGS comparison experiments.")
     parser.add_argument("resume_arg", nargs="?", help="Existing run number, e.g. 03, to resume.")
     parser.add_argument("--resume", dest="resume_option", help="Existing output/NN directory or run number.")
-    parser.add_argument("--mode", choices=["train", "test", "both"], default="both")
+    parser.add_argument("--mode", choices=["train", "test", "both"], default="train")
     parser.add_argument("--data", default=str(DEFAULT_DATASET), help="Dataset root containing train/ and test/.")
     parser.add_argument("--output", default="output", help="Output root relative to this folder.")
     parser.add_argument("--iterations", type=int, default=30000)
@@ -131,7 +131,9 @@ def main(argv: list[str] | None = None) -> int:
     failures: list[tuple[str, str]] = []
     for definition in selected:
         experiment_output = run_dir / definition.directory
-        if should_skip_experiment(experiment_output):
+        if should_skip_experiment(experiment_output, mode=args.mode):
+            if args.mode == "train":
+                reuse_completed_training(experiment_output)
             print(f"[skip:{definition.id}] {definition.name} (completed artifacts exist)")
             continue
         print(f"[{definition.id}] {definition.name}")

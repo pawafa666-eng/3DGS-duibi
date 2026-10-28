@@ -56,10 +56,10 @@ python .\setup_repositories.py --only 02 03 04 05 06 07 08 09
 
 ## 运行全部 10 个实验
 
-默认训练再测试，每个实验 30000 次迭代：
+默认只训练并保存模型，每个实验 30000 次迭代，不进入 test 阶段，也不执行训练中的定期整组验证：
 
 ```powershell
-python .\main.py --mode both
+python .\main.py --mode train
 ```
 
 如果只想快速检查各算法环境，不想等待完整训练，可以运行：
@@ -169,7 +169,7 @@ output/03/
 每个实验目录都可以独立调用：
 
 ```powershell
-python .\02_2DGS\run.py --stage both --data data\地大隧道
+python .\02_2DGS\run.py --stage train --data data\地大隧道
 ```
 
 单独入口会创建新的运行目录；需要接着已有运行时传入 `--run-dir output\03`。02--09 的独立入口也会使用同一套标准 COLMAP 兼容缓存；`--dry-run` 只生成命令计划，不会转换 500 万点文件。

@@ -47,3 +47,18 @@ def test_native_import_probe_accepts_only_selected_import_origin(tmp_path):
     module.write_text("marker = 1\n")
     result = validate_native_modules(sys.executable, tmp_path, "00", modules=[module.stem])
     assert Path(result[module.stem]) == module
+
+
+@pytest.mark.parametrize("isolated", [True, False])
+def test_mip_rasterizer_cannot_be_used_as_algorithm_01(tmp_path, isolated):
+    import sys
+    package = tmp_path / "diff_gaussian_rasterization"
+    package.mkdir()
+    root = Path(__file__).resolve().parents[1]
+    source = root / "05_Mip_Splatting/runtime/submodules/diff-gaussian-rasterization/diff_gaussian_rasterization/__init__.py"
+    (package / "__init__.py").write_bytes(source.read_bytes())
+    (package / "_C.py").write_text("# Stand-in only for import-path/contract inspection, never training\n")
+    with pytest.raises(RuntimeError, match="kernel_size"):
+        validate_native_modules(sys.executable, tmp_path if isolated else None, "01",
+                                env={"PYTHONPATH": str(tmp_path)},
+                                modules=["diff_gaussian_rasterization._C"])

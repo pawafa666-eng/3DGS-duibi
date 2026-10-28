@@ -535,10 +535,13 @@ if __name__ == "__main__":
 
     logger.info(f'args: {args}')
 
-    if args.test_iterations[0] == -1:
-        args.test_iterations = [i for i in range(10000, args.iterations + 1, 10000)]
-    if len(args.test_iterations) == 0 or args.test_iterations[-1] != args.iterations:
-        args.test_iterations.append(args.iterations)
+    if args.train_only:
+        args.test_iterations = []
+    else:
+        if args.test_iterations[0] == -1:
+            args.test_iterations = [i for i in range(10000, args.iterations + 1, 10000)]
+        if len(args.test_iterations) == 0 or args.test_iterations[-1] != args.iterations:
+            args.test_iterations.append(args.iterations)
     print(args.test_iterations)
 
     if args.save_iterations[0] == -1:

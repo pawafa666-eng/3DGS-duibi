@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from .native_contracts import rasterizer_contract
 
 
 def algorithm_environment(method_id, *, extension_root=None, environ=None, cache_dir=None):
@@ -45,34 +46,49 @@ def algorithm_environment(method_id, *, extension_root=None, environ=None, cache
 
 def validate_native_modules(python, overlay, method_id, *, env=None, modules=None):
     """Import native libraries in the selected interpreter and verify origins."""
-    overlay = Path(overlay).resolve()
-    if not overlay.is_dir():
+    overlay = Path(overlay).resolve() if overlay is not None else None
+    if overlay is not None and not overlay.is_dir():
         raise RuntimeError(f"Missing CUDA extension overlay: {overlay}")
     if modules is None:
         raster = "diff_surfel_rasterization" if str(method_id).zfill(2) == "02" else "diff_gaussian_rasterization"
         modules = [raster + "._C", "simple_knn._C"]
         if str(method_id).zfill(2) == "07":
             modules.append("gaussianpro")
-    code = """import importlib,json,sys
+    raster_modules = [name for name in modules if name.startswith(("diff_gaussian_rasterization.", "diff_surfel_rasterization."))]
+    contract = rasterizer_contract(method_id) if raster_modules else None
+    code = """import hashlib,importlib,json,sys
 from pathlib import Path
 import torch
-root=Path(sys.argv[1]).resolve()
+root=Path(sys.argv[1]).resolve() if sys.argv[1] else None
+contract=json.loads(sys.argv[3])
 origins={}
 for name in json.loads(sys.argv[2]):
  module=importlib.import_module(name)
  path=Path(module.__file__).resolve()
- if not path.is_relative_to(root):
+ if root is not None and not path.is_relative_to(root):
   raise RuntimeError(f'{name} imported outside selected overlay: {path}')
  origins[name]=str(path)
+ if contract and name.startswith(('diff_gaussian_rasterization.','diff_surfel_rasterization.')):
+  package=importlib.import_module(contract['package'])
+  actual=list(package.GaussianRasterizationSettings._fields)
+  if actual != contract['fields']:
+   raise RuntimeError(f'Rasterizer interface mismatch: expected {contract["fields"]}; got {actual}; loaded {package.__file__}')
+  raw=Path(package.__file__).read_bytes().replace(b'\\r\\n',b'\\n')
+  if hashlib.sha256(raw).hexdigest() != contract['source_sha256']:
+   raise RuntimeError(f'Rasterizer source differs from bundled algorithm: {package.__file__}')
 print(json.dumps(origins))
 """
     merged = dict(os.environ)
     merged.update(env or {})
-    existing = merged.get("PYTHONPATH", "")
-    merged["PYTHONPATH"] = str(overlay) + (os.pathsep + existing if existing else "")
-    result = subprocess.run([python, "-c", code, str(overlay), json.dumps(modules)],
+    if overlay is not None:
+        existing = merged.get("PYTHONPATH", "")
+        merged["PYTHONPATH"] = str(overlay) + (os.pathsep + existing if existing else "")
+    result = subprocess.run([python, "-c", code, str(overlay) if overlay is not None else "", json.dumps(modules), json.dumps(contract)],
                             capture_output=True, text=True, encoding="utf-8", errors="replace",
                             env=merged, timeout=45)
     if result.returncode:
-        raise RuntimeError("CUDA extension import verification failed: " + result.stderr[-2500:])
+        repair_root = overlay.parent if overlay is not None else Path.home() / "3dgs-comparison-extensions"
+        raise RuntimeError(f"Algorithm {method_id} CUDA extension mismatch/import failure: " + result.stderr[-2500:]
+                           + f"\nRebuild: python wsl_build_extensions.py --only {method_id} --extension-root {repair_root}"
+                           + f"\nRun main.py with --extension-root {repair_root}")
     return json.loads(result.stdout.splitlines()[-1])

@@ -115,8 +115,8 @@
     ],
     "runtime": "08_Octree_GS/runtime",
     "files": 498,
-    "git_blob_bytes": 2835192,
-    "git_blob_manifest_sha256": "fc2341e8a16fbf806b81d7fa82e9bff0cb53457134a1f719a642803ea26b928b",
+    "git_blob_bytes": 2835276,
+    "git_blob_manifest_sha256": "ddfb94e1c466f1d31ad7dbcf8c231c13320476f47e695a8cb0cbc6a66529a9e9",
     "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
   },
   {
@@ -152,9 +152,9 @@
     "archive_url": "https://codeload.github.com/facebookresearch/pytorch3d/tar.gz/refs/heads/main",
     "downloaded_archive_sha256": "57d50439e86cd423aaee8f2aef5ab5008d9ddce35c0744d56551359f18aca4cd",
     "note": "Vendored source snapshot; installation does not fetch floating main.",
-    "files": 351,
     "git_blob_bytes": 3219620,
     "git_blob_manifest_sha256": "f021ad883d1a8817f3e23bcb052ec2aabbba679c685f060e504e2ce5fb4af399",
-    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF"
+    "hash_scope": "SHA256 of sorted relative paths, NUL, staged Git blob IDs, LF",
+    "files": 351
   }
 ]

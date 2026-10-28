@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -58,14 +59,37 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def should_skip_experiment(experiment_output: Path) -> bool:
+def should_skip_experiment(experiment_output: Path, mode: str | None = None) -> bool:
     status = _read_json(Path(experiment_output) / "status.json")
-    if not status or status.get("status") != "completed":
+    if not status:
+        return False
+    if mode == "train" and status.get("status") == "failed" and status.get("failed_stage") == "test":
+        return _artifact_ready(Path(experiment_output), "train")
+    if status.get("status") != "completed":
         return False
     artifacts = status.get("artifacts", [])
     if not isinstance(artifacts, list):
         return False
+    if mode is not None:
+        required = ["train", "test"] if mode == "both" else [mode]
+        if not set(required).issubset(artifacts):
+            return False
+        artifacts = required
     return all(_artifact_ready(Path(experiment_output), str(artifact)) for artifact in artifacts)
+
+
+def reuse_completed_training(output_dir: Path) -> dict[str, Any]:
+    """Retain a successful train stage without repairing/repeating failed tests."""
+    current = _read_json(output_dir / "status.json") or {}
+    if current.get("status") == "completed" and current.get("mode") == "train":
+        return {**current, "train_reused": True}
+    archive = output_dir / "status_before_train_only.json"
+    if not archive.exists():
+        atomic_write_json(archive, current)
+    return _status(output_dir, status="completed", mode="train", artifacts=["train"],
+                   current_stage=None, failed_stage=None, error=None, stderr_tail=None,
+                   exit_code=0, train_reused=True, previous_status_file=archive.name,
+                   reason="Training already completed; test stage excluded by train mode")
 
 
 def _artifact_ready(output_dir: Path, artifact: str) -> bool:
@@ -308,8 +332,23 @@ def build_context(
     }
 
 
-def _expanded_stage(stage: StageDefinition, context: dict[str, Any]) -> list[list[str]]:
-    return [expand_command(command, context) for command in stage.commands]
+def _expanded_stage(stage: StageDefinition, context: dict[str, Any], *, mode=None,
+                    experiment_id=None, stage_name=None) -> list[list[str]]:
+    commands = [expand_command(command, context) for command in stage.commands]
+    if mode == "train" and stage_name == "train":
+        for command in commands:
+            if "--iterations" in command:
+                if "--test_iterations" in command:
+                    start = command.index("--test_iterations")
+                    end = start + 1
+                    while end < len(command) and not re.match(r"^-{1,2}[A-Za-z_]", command[end]):
+                        end += 1
+                    command[start:end] = ["--test_iterations", "-1"]
+                else:
+                    command.extend(["--test_iterations", "-1"])
+            if experiment_id in ("06", "08") and "--train_only" not in command:
+                command.append("--train_only")
+    return commands
 
 
 def run_experiment(
@@ -320,6 +359,8 @@ def run_experiment(
 ) -> dict[str, Any]:
     output_dir = Path(context["output"])
     output_dir.mkdir(parents=True, exist_ok=True)
+    if mode == "train" and should_skip_experiment(output_dir, mode=mode):
+        return reuse_completed_training(output_dir)
     if (
         not context.get("_dataset_context_prepared")
         or context.get("_dataset_context_dry_run") != dry_run
@@ -343,10 +384,10 @@ def run_experiment(
         stages.append(("train", experiment.train))
     if mode in ("test", "both"):
         stages.append(("test", experiment.test))
-    for _, stage in stages:
-        all_commands.extend(_expanded_stage(stage, context))
+    for stage_name, stage in stages:
+        all_commands.extend(_expanded_stage(stage, context, mode=mode, experiment_id=experiment.id, stage_name=stage_name))
     write_commands(output_dir / "command.txt", all_commands)
-    if should_skip_experiment(output_dir):
+    if should_skip_experiment(output_dir, mode=mode):
         current = _read_json(output_dir / "status.json") or {"status": "completed"}
         current["reason"] = "completed artifacts already exist"
         return current
@@ -388,15 +429,18 @@ def run_experiment(
     try:
         runtime_env = algorithm_environment(experiment.id, extension_root=context.get("extension_root"),
                                             cache_dir=output_dir / ".torch_inductor")
-        if "PYTHONPATH" in runtime_env:
-            validate_native_modules(sys.executable, runtime_env["PYTHONPATH"].split(os.pathsep)[0],
-                                    experiment.id, env=runtime_env)
+        if "PYTHONPATH" in runtime_env or (Path(context["root"]) / "algorithms.json").is_file():
+            overlay = runtime_env["PYTHONPATH"].split(os.pathsep)[0] if "PYTHONPATH" in runtime_env else None
+            imported = validate_native_modules(sys.executable, overlay, experiment.id, env=runtime_env)
+            raster = next((path for name, path in imported.items() if "rasterization" in name), None)
+            if raster:
+                print(f"[{experiment.id}] rasterizer: {raster}", flush=True)
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
         return _status(output_dir, status="blocked", error=str(error), finished_at=now_iso(), exit_code=127)
     for stage_name, stage in stages:
         stage_started = time.perf_counter()
         render_snapshot = snapshot_render_images(output_dir) if stage_name == "test" else {}
-        stage_commands = _expanded_stage(stage, context)
+        stage_commands = _expanded_stage(stage, context, mode=mode, experiment_id=experiment.id, stage_name=stage_name)
         cwd_value = _stage_context(context, stage, stage_name)["cwd"]
         cwd = Path(cwd_value)
         if not cwd.is_dir():

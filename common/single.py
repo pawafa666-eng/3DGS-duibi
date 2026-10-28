@@ -11,7 +11,7 @@ from .runner import build_context, next_run_dir, resolve_resume_dir, run_experim
 
 def run_single(experiment_dir: Path, argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run one comparison experiment.")
-    parser.add_argument("--stage", choices=["train", "test", "both"], default="both")
+    parser.add_argument("--stage", choices=["train", "test", "both"], default="train")
     parser.add_argument("--data", default="data/地大隧道")
     parser.add_argument("--output", default="output")
     parser.add_argument("--run-dir", default=None)

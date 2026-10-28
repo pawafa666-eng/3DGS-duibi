@@ -1,5 +1,7 @@
 # 合成输入短训练实测记录
 
+2026-10-28 补充：针对 01 误用 Mip-Splatting 同名扩展的问题，新增接口和源码匹配检查。将继承的 `PYTHONPATH` 指向 05，再通过正式主控分别运行 01、06、08，三者都完成 10 iterations 与保存，未进入 test 或执行定期整组验证。此后默认模式改为只训练；训练成功、仅后续测试失败的旧运行可直接复用训练结果。原来的 02 测试输出问题未改动。本次回归检查为 `156 passed, 96 subtests passed`。
+
 日期：2026-10-26。此记录来自实际 GPU 运行，使用本仓库内置 `runtime/`，不是模拟填表，也不是正式精度对比结果。
 
 环境：WSL2 Ubuntu 26.04.1、RTX 5060 Laptop 8 GB、Python 3.11、PyTorch 2.7.1+cu128、CUDA Toolkit 12.8、GCC/G++ 13。详细安装命令见 [UBUNTU_SETUP.md](UBUNTU_SETUP.md)。

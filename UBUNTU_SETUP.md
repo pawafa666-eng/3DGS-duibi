@@ -247,6 +247,23 @@ Concrete-GS 保留本项目指定的 `position_lr_init=0.0000016`、`position_lr
 
 ## 10. 常见错误的处理位置
 
+### 只训练时续跑，以及 01 的扩展混用
+
+`main.py` 和每个算法的 `run.py` 默认只训练；主控入口也可显式使用 `--mode train`。此模式不启动 test 阶段，并关闭训练中的定期整组验证。06、08 额外跳过训练后自带的渲染/评估。训练本身需要的损失、梯度、增密和模型保存仍照常进行。
+
+如果 01 提示 `GaussianRasterizationSettings` 缺少 `kernel_size`、`subpixel_offset`，说明当前导入的扩展接口与 01 不匹配，这两个字段属于 05 Mip-Splatting。不要给 01 补这两个参数来绕过错误；应把各算法扩展分别编译到自己的目录：
+
+```bash
+git pull origin main
+python wsl_build_extensions.py --jobs 1
+python main.py --mode train --resume 03 --continue-on-error \
+  --extension-root "$HOME/3dgs-comparison-extensions"
+```
+
+仅修复 01 时可用 `python wsl_build_extensions.py --only 01 --jobs 1`，不会改动 02 的已训练模型。运行前会打印实际 rasterizer 路径，并核对它与算法内置接口及 Python 源码的一致性，发现混用时在训练前停止，给出重编译命令。
+
+上述 `03` 对应已经有训练结果的 `output/03`，请按自己的目录选择。若某算法已训练完成，仅在后续 test 阶段失败，`--mode train --resume 03` 会复用训练结果；原来的失败状态保存在 `status_before_train_only.json`，不会重新训练，也不会修复/重跑测试。真正失败在 train 阶段的算法仍会重试。
+
 | 现象 | 处理方法 |
 |---|---|
 | 缺少 `repo` | 此版本默认使用仓库内置 `runtime/`；先确认已同步完整的新版本和 `experiment.json` |
